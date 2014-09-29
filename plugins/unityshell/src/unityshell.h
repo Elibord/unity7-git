@@ -64,7 +64,6 @@
 #include "PanelController.h"
 #include "PanelStyle.h"
 #include "UScreen.h"
-#include "DebugDBusInterface.h"
 #include "ScreenIntrospection.h"
 #include "ScreenSaverDBusManager.h"
 #include "SwitcherController.h"
@@ -343,7 +342,6 @@ private:
   lockscreen::DBusManager::Ptr screensaver_dbus_manager_;
   lockscreen::Controller::Ptr lockscreen_controller_;
   ui::EdgeBarrierController::Ptr edge_barriers_;
-  debug::DebugDBusInterface debugger_;
   std::unique_ptr<BGHash>   bghash_;
   spread::Widgets::Ptr      spread_widgets_;
 

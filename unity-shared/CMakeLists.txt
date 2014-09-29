@@ -23,7 +23,6 @@ set (UNITY_SHARED_SOURCES
      CoverArt.cpp
      BackgroundEffectHelper.cpp
      DashStyle.cpp
-     DebugDBusInterface.cpp
      DecorationStyle.cpp
      DefaultThumbnailProvider.cpp
      DeltaRestrainment.cpp
