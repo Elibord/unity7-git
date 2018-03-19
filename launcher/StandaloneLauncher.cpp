@@ -30,6 +30,7 @@
 #include "LauncherController.h"
 #include "Launcher.h"
 #include "unity-shared/IconRenderer.h"
+#include "unity-shared/InputMonitor.h"
 #include "unity-shared/PanelStyle.h"
 #include "unity-shared/UBusMessages.h"
 #include "unity-shared/UnitySettings.h"
@@ -98,6 +99,7 @@ private:
   nux::NuxTimerTickSource tick_source;
   nux::animation::AnimationController animation_controller;
   launcher::Controller::Ptr controller;
+  input::Monitor im;
 };
 
 int main(int argc, char** argv)
