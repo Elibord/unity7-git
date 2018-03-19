@@ -463,7 +463,8 @@ void ApplicationLauncherIcon::UpdateDesktopQuickList()
       glib::Object<GdkAppLaunchContext> context(gdk_display_get_app_launch_context(display));
       gdk_app_launch_context_set_timestamp(context, timestamp);
       auto gcontext = glib::object_cast<GAppLaunchContext>(context);
-      indicator_desktop_shortcuts_nick_exec_with_context(desktop_shortcuts_, nick.c_str(), gcontext);
+      // FIXME: temporarily disabled, requires libappindicator
+      // indicator_desktop_shortcuts_nick_exec_with_context(desktop_shortcuts_, nick.c_str(), gcontext);
     });
 
     dbusmenu_menuitem_child_append(menu_desktop_shortcuts_, item);
