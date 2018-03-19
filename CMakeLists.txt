@@ -296,7 +296,7 @@ if (ENABLE_X_SUPPORT)
 endif ()
 
 add_subdirectory(doc)
-add_subdirectory(services)
+# add_subdirectory(services)
 add_subdirectory(tools)
 add_subdirectory(UnityCore)
 add_subdirectory(guides)
