@@ -89,6 +89,11 @@ PluginAdapter::PluginAdapter(CompScreen* screen)
 PluginAdapter::~PluginAdapter()
 {}
 
+Display* PluginAdapter::GetDisplay() const
+{
+  return screen->dpy();
+}
+
 /* A No-op for now, but could be useful later */
 void PluginAdapter::OnScreenGrabbed()
 {

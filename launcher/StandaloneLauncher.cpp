@@ -35,8 +35,17 @@
 #include "unity-shared/UBusMessages.h"
 #include "unity-shared/UnitySettings.h"
 #include "unity-shared/UScreen.h"
+#include "unity-shared/XWindowManager.h"
 
 using namespace unity;
+
+namespace unity 
+{
+WindowManagerPtr create_window_manager()
+{
+  return WindowManagerPtr(new XWindowManager());
+}
+}
 
 namespace
 {

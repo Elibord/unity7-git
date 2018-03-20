@@ -67,6 +67,8 @@ public:
 
   ~PluginAdapter();
 
+  Display* GetDisplay() const override; // will be called by XWindowManager
+
   void SetScaleAction(MultiActionList& scale);
   void SetExpoAction(MultiActionList& expo);
 

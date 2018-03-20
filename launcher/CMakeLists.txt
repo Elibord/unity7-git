@@ -96,8 +96,7 @@ add_dependencies (switcher-lib unity-core-${UNITY_API_VERSION} unity-shared)
 set (LAUNCHER_LIBS
     launcher-lib
     unity-shared
-    unity-shared-bamf
-    unity-shared-standalone)
+    unity-shared-bamf)
 
 #
 # Standalone variant
