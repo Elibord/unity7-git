@@ -35,8 +35,8 @@ public:
   Window GetActiveWindow() const override;
   std::vector<Window> GetWindowsInStackingOrder() const override;
 
-  int MonitorGeometryIn(nux::Geometry const& geo) const override;
-  bool IsTopWindowFullscreenOnMonitorWithMouse() const override;
+  int MonitorGeometryIn(nux::Geometry const& geo) const override; // XXX: this seems to be used mostly in decor, unityshell and standalone window manager. also spread filter
+  bool IsTopWindowFullscreenOnMonitorWithMouse() const override; // XXX: can't find where it's used
 
   bool IsWindowMaximized(Window window_id) const override;
   bool IsWindowVerticallyMaximized(Window window_id) const override;
@@ -73,7 +73,7 @@ public:
   void Activate(Window window_id) override;
   void Raise(Window window_id) override;
   void Lower(Window window_id) override;
-  void RestackBelow(Window window_id, Window sibiling_id) override;
+  void RestackBelow(Window window_id, Window sibling_id) override; // XXX: doesn't seem to be used
 
   void TerminateScale() override;
   bool IsScaleActive() const override;
@@ -83,9 +83,9 @@ public:
   void TerminateExpo() override;
   bool IsExpoActive() const override;
 
-  bool IsWallActive() const override;
+  bool IsWallActive() const override; // used in SwitcherController (CanShowSwitcher)
 
-  bool IsAnyWindowMoving() const override;
+  bool IsAnyWindowMoving() const override; // XXX: used in PanelView (panel)
 
   void FocusWindowGroup(std::vector<Window> const& windows,
                         FocusVisibility, int monitor = -1,
@@ -93,8 +93,8 @@ public:
   bool ScaleWindowGroup(std::vector<Window> const& windows,
                         int state, bool force) override;
 
-  bool IsScreenGrabbed() const override;
-  bool IsViewPortSwitchStarted() const override;
+  bool IsScreenGrabbed() const override; // used in DashController, HudController, LockScreenController, LockScreenPanel
+  bool IsViewPortSwitchStarted() const override; // XXX: doesn't seem to be used
 
   void MoveResizeWindow(Window window_id, nux::Geometry geometry) override;
   void StartMove(Window window_id, int x, int y) override;
@@ -135,6 +135,12 @@ public:
 
 protected:
   void AddProperties(debug::IntrospectionData& introspection) override;
+
+private:
+  Atom GetAtom(const std::string &name, bool only_if_exists=false) const;
+  std::vector<Atom> GetWindowAtomsByAtom(Window window_id, Atom atom) const;
+  int64_t GetWindowPropertyByAtom(Window window_id, Atom atom) const;
+  void SetWindowState(Window window_id, long state_op, Atom atom1, Atom atom2) const;
 };
 
 }
