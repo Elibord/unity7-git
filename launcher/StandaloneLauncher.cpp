@@ -25,10 +25,6 @@
 #include <gtk/gtk.h>
 
 #include "unity-shared/BackgroundEffectHelper.h"
-#include "EdgeBarrierController.h"
-#include "FavoriteStoreGSettings.h"
-#include "LauncherController.h"
-#include "Launcher.h"
 #include "unity-shared/IconRenderer.h"
 #include "unity-shared/InputMonitor.h"
 #include "unity-shared/PanelStyle.h"
@@ -36,6 +32,11 @@
 #include "unity-shared/UnitySettings.h"
 #include "unity-shared/UScreen.h"
 #include "unity-shared/XWindowManager.h"
+#include "EdgeBarrierController.h"
+#include "FavoriteStoreGSettings.h"
+#include "LauncherController.h"
+#include "Launcher.h"
+#include "QuicklistManager.h"
 
 using namespace unity;
 
@@ -112,8 +113,6 @@ private:
 
   void SetupWindow()
   {
-    const auto launcher_geom = LauncherGeom();
-
     Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
     Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
 
@@ -159,23 +158,42 @@ private:
 
   void SetupLauncher()
   {
-    controller->launcher().Resize(nux::Point(), LauncherGeom().GetHeight());
+    controller->launcher().Resize(nux::Point(), launcher_geom.GetHeight());
   }
 
   void Init()
   {
-    SetupBackground();
-
     controller.reset(new launcher::Controller(std::make_shared<StandaloneDndManager>(), std::make_shared<ui::EdgeBarrierController>()));
+    launcher_geom = LauncherGeom();
 
+    SetupBackground();
     SetupLauncher();
     SetupWindow();
-
-    // UScreen* uscreen = UScreen::GetDefault();
 
     // wt->window_configuration.connect([this] (int x, int y, int w, int h) {
     //   nux::GetGraphicsDisplay()->ResetWindowSize();
     // });
+
+    QuicklistManager::Default()->quicklist_opened.connect([this] (const nux::ObjectPtr<QuicklistView> &) {
+      UScreen* uscreen = UScreen::GetDefault();
+      const auto screen_width = uscreen->GetScreenGeometry().GetWidth();
+
+      Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+      Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
+
+      XResizeWindow(dpy, window_id, screen_width, launcher_geom.GetHeight());
+
+      XFlush(dpy);
+    });
+
+    QuicklistManager::Default()->quicklist_closed.connect([this] (const nux::ObjectPtr<QuicklistView> &) {
+      Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+      Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
+
+      XResizeWindow(dpy, window_id, launcher_geom.GetWidth(), launcher_geom.GetHeight());
+
+      XFlush(dpy);
+    });
   }
 
   static void ThreadWidgetInit(nux::NThread* thread, void* self)
@@ -191,6 +209,7 @@ private:
   nux::animation::AnimationController animation_controller;
   launcher::Controller::Ptr controller;
   input::Monitor im;
+  nux::Rect launcher_geom;
 };
 
 int main(int argc, char** argv)
