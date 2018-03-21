@@ -39,18 +39,12 @@
 
 using namespace unity;
 
-namespace unity 
+namespace unity
 {
 WindowManagerPtr create_window_manager()
 {
   return WindowManagerPtr(new XWindowManager());
 }
-}
-
-namespace
-{
-const nux::Size win_size(1024, 768);
-const nux::Color bg_color(95/255.0f, 18/255.0f, 45/255.0f, 1.0f);
 }
 
 struct StandaloneDndManager : XdndManager
@@ -61,7 +55,7 @@ struct StandaloneDndManager : XdndManager
 struct LauncherWindow
 {
   LauncherWindow()
-    : wt(nux::CreateGUIThread("Unity Launcher", win_size.width, win_size.height, 0, &LauncherWindow::ThreadWidgetInit, this))
+    : wt(nux::CreateGUIThread("Unity Launcher", 100, 100, 0, &LauncherWindow::ThreadWidgetInit, this))
     , animation_controller(tick_source)
   {}
 
@@ -71,29 +65,104 @@ struct LauncherWindow
   }
 
 private:
+  nux::Rect LauncherGeom()
+  {
+    assert(controller);
+    const long launcher_width = controller->launcher().GetWidth();
+
+    // assuming there is no workarea reservation for launcher itself
+
+    Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+
+    Atom ret = 0;
+    int format = 0;
+    unsigned char *data = 0;
+    unsigned long nitems = 0, after = 0;
+
+    int status = XGetWindowProperty(dpy, DefaultRootWindow(dpy),
+                                    XInternAtom(dpy, "_NET_WORKAREA", False), 0, 4, False, XA_CARDINAL,
+                                    &ret, &format, &nitems, &after, &data);
+
+
+    long launcher_height = 0, launcher_x = 0, launcher_y = 0;
+    if (status == Success && ret == XA_CARDINAL && format == 32 && nitems == 4)
+    {
+      long *workarea = reinterpret_cast<long *>(data);
+      launcher_x = workarea[0];
+      launcher_y = workarea[1];
+      launcher_height = workarea[3];
+
+      XFree(data);
+    }
+
+    // std::cout << "launcher geom: "
+    //   << launcher_width << "x" << launcher_height
+    //   << "+" << launcher_x << "-" << launcher_y
+    //   << std::endl;
+
+    return nux::Rect(launcher_x, launcher_y, launcher_width, launcher_height);
+  }
+
   void SetupBackground()
   {
-    nux::ObjectPtr<nux::BaseTexture> background_tex;
-    background_tex.Adopt(nux::CreateTextureFromFile("/usr/share/backgrounds/warty-final-ubuntu.png"));
-    nux::TexCoordXForm texxform;
-    auto tex_layer = std::make_shared<nux::TextureLayer>(background_tex->GetDeviceTexture(), texxform, nux::color::White);
-    wt->SetWindowBackgroundPaintLayer(tex_layer.get());
+    nux::ColorLayer color_layer(nux::color::Transparent);
+    // nux::ColorLayer color_layer(nux::Color(0, 1, 0, 0.1));
+    wt->SetWindowBackgroundPaintLayer(&color_layer);
+  }
+
+  void SetupWindow()
+  {
+    const auto launcher_geom = LauncherGeom();
+
+    Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+    Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
+
+    // set type to dock
+    auto atom = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
+    XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False),
+                    XA_ATOM, 32, PropModeReplace,
+                    (unsigned char *)&atom, 1);
+
+    // reserve space
+    const std::vector<long> values =
+    {
+      launcher_geom.GetWidth(), 0, // left, right
+      0, 0, // top, bottom
+      launcher_geom.GetPosition().y, launcher_geom.GetPosition().y + launcher_geom.GetHeight(), // left start y, left end y
+      0, 0, // right start y, right end y
+      0, 0, // top start x, top end x
+      0, 0, // bottom start x, bottom end x
+    };
+    XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False),
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&values[0], values.size());
+
+
+    XMoveWindow(dpy, window_id, launcher_geom.GetPosition().x, launcher_geom.GetPosition().y);
+    XResizeWindow(dpy, window_id, launcher_geom.GetWidth(), launcher_geom.GetHeight());
+
+    XFlush(dpy);
+  }
+
+  void SetupLauncher()
+  {
+    controller->launcher().Resize(nux::Point(), LauncherGeom().GetHeight());
   }
 
   void Init()
   {
     SetupBackground();
+
     controller.reset(new launcher::Controller(std::make_shared<StandaloneDndManager>(), std::make_shared<ui::EdgeBarrierController>()));
 
-    UScreen* uscreen = UScreen::GetDefault();
-    std::vector<nux::Geometry> fake_monitor({nux::Geometry(0, 0, win_size.width, win_size.height)});
-    uscreen->changed.emit(0, fake_monitor);
-    uscreen->changed.clear();
-    controller->launcher().Resize(nux::Point(), win_size.height);
+    SetupLauncher();
+    SetupWindow();
 
-    wt->window_configuration.connect([this] (int x, int y, int w, int h) {
-      controller->launcher().Resize(nux::Point(), h);
-    });
+    // UScreen* uscreen = UScreen::GetDefault();
+
+    // wt->window_configuration.connect([this] (int x, int y, int w, int h) {
+    //   nux::GetGraphicsDisplay()->ResetWindowSize();
+    // });
   }
 
   static void ThreadWidgetInit(nux::NThread* thread, void* self)
