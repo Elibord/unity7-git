@@ -123,8 +123,21 @@ private:
                     XA_ATOM, 32, PropModeReplace,
                     (unsigned char *)&atom, 1);
 
+    // undecorate (for xfce)
+    const std::vector<long> hints_values =
+    {
+      0x2, // flags
+      0x0, // functions
+      0x0, // decorations
+      0x0, // inputMode
+      0x0, // status
+    };
+    XChangeProperty(dpy, window_id, XInternAtom(dpy, "_MOTIF_WM_HINTS", False),
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&hints_values[0], hints_values.size());
+
     // reserve space
-    const std::vector<long> values =
+    const std::vector<long> dock_values =
     {
       launcher_geom.GetWidth(), 0, // left, right
       0, 0, // top, bottom
@@ -135,7 +148,7 @@ private:
     };
     XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False),
                     XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)&values[0], values.size());
+                    (unsigned char *)&dock_values[0], dock_values.size());
 
 
     XMoveWindow(dpy, window_id, launcher_geom.GetPosition().x, launcher_geom.GetPosition().y);
