@@ -26,15 +26,23 @@
 #include <NuxCore/Logger.h>
 #include <gtk/gtk.h>
 
+#include "unity-shared/BGHash.h"
+#include "unity-shared/DashStyle.h"
+#include "unity-shared/FontSettings.h"
 #include "unity-shared/InputMonitor.h"
 #include "unity-shared/PanelStyle.h"
+#include "unity-shared/ThumbnailGenerator.h"
 #include "unity-shared/UnitySettings.h"
 #include "unity-shared/UScreen.h"
 #include "unity-shared/XWindowManager.h"
+#include "dash/ApplicationStarterImp.h"
+#include "dash/DashController.h"
 #include "EdgeBarrierController.h"
 #include "FavoriteStoreGSettings.h"
 #include "LauncherController.h"
 #include "Launcher.h"
+
+#include <UnityCore/GSettingsScopes.h>
 
 using namespace unity;
 
@@ -66,10 +74,20 @@ struct LauncherWindow
 private:
   nux::Rect LauncherGeom() const
   {
-    assert(controller);
-    const auto width = controller->launcher().GetWidth();
+    assert(launcher_controller);
+    const auto width = launcher_controller->launcher().GetWidth();
     const auto height = workarea_geom.GetHeight();
     const auto x = workarea_geom.GetPosition().x;
+    const auto y = workarea_geom.GetPosition().y;
+
+    return nux::Rect(x, y, width, height);
+  }
+
+  nux::Rect DashGeom() const
+  {
+    const auto width = workarea_geom.GetWidth() - launcher_geom.GetWidth();
+    const auto height = workarea_geom.GetHeight();
+    const auto x = launcher_geom.GetPosition().x + launcher_geom.GetWidth();
     const auto y = workarea_geom.GetPosition().y;
 
     return nux::Rect(x, y, width, height);
@@ -107,6 +125,14 @@ private:
     }
 
     return nux::Rect(x, y, width, height);
+  }
+
+  void SetupSettings()
+  {
+    auto &settings = Settings::Instance();
+    settings.form_factor = unity::FormFactor::DESKTOP;
+    settings.launcher_position = unity::LauncherPosition::LEFT;
+    settings.is_standalone = true;
   }
 
   void SetupBackground()
@@ -170,18 +196,30 @@ private:
 
   void SetupLauncher()
   {
-    controller->launcher().Resize(nux::Point(), launcher_geom.GetHeight());
+    launcher_controller->launcher().Resize(nux::Point(), launcher_geom.GetHeight());
+  }
+
+  void SetupDash()
+  {
+
   }
 
   void Init()
   {
-    controller.reset(new launcher::Controller(std::make_shared<StandaloneDndManager>(), std::make_shared<ui::EdgeBarrierController>()));
+    static unity::BGHash bghash; // FIXME: will attempt to create WindowManager instance (WindowManager::Default())
+
+    launcher_controller.reset(new launcher::Controller(std::make_shared<StandaloneDndManager>(), std::make_shared<ui::EdgeBarrierController>()));
+    dash_controller.reset(new dash::Controller());
+
     screen_geom = ScreenGeom();
     workarea_geom = WorkareaGeom();
     launcher_geom = LauncherGeom(); // FIXME: order matters :(
+    dash_geom = DashGeom();
 
+    SetupSettings();
     SetupBackground();
     SetupLauncher();
+    SetupDash();
     SetupWindow(); // FIXME: order matters :(
   }
 
@@ -192,22 +230,28 @@ private:
 
   internal::FavoriteStoreGSettings favorite_store; // XXX: segfaults w/o this
   unity::Settings settings;
+  unity::FontSettings font_settings;
   panel::Style panel_style;
+  unity::ThumbnailGenerator thumb_generator;
+  dash::Style dash_style;
   std::shared_ptr<nux::WindowThread> wt;
   nux::NuxTimerTickSource tick_source;
   nux::animation::AnimationController animation_controller;
-  launcher::Controller::Ptr controller;
+  launcher::Controller::Ptr launcher_controller;
   input::Monitor im;
   nux::Rect launcher_geom;
   nux::Rect screen_geom;
   nux::Rect workarea_geom;
+  dash::Controller::Ptr dash_controller;
+  nux::Rect dash_geom;
 };
 
 int main(int argc, char** argv)
 {
   gtk_init(&argc, &argv);
-  nux::logging::configure_logging(::getenv("UNITY_LOG_SEVERITY"));
   nux::NuxInitialize(nullptr);
+
+  nux::logging::configure_logging(::getenv("UNITY_LOG_SEVERITY"));
 
   LauncherWindow lc;
   lc.Show();

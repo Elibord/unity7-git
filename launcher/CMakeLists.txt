@@ -102,7 +102,7 @@ set (LAUNCHER_LIBS
 # Standalone variant
 #
 add_executable (launcher StandaloneLauncher.cpp)
-target_link_libraries (launcher ${LAUNCHER_LIBS})
+target_link_libraries (launcher ${LAUNCHER_LIBS} dash-lib)
 
 if (ENABLE_X_SUPPORT)
   add_executable (switcher StandaloneSwitcher.cpp)
