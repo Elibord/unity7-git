@@ -73,7 +73,7 @@ struct LauncherWindow
   }
 
 private:
-  nux::Rect LauncherGeom() const
+  nux::Rect LauncherGeom() const // display-space
   {
     assert(launcher_controller);
     const auto width = launcher_controller->launcher().GetWidth();
@@ -84,7 +84,21 @@ private:
     return nux::Rect(x, y, width, height);
   }
 
-  nux::Rect DashGeom() const
+  nux::Rect WorkareaGeomLocal() const // window-space
+  {
+    return nux::Rect(0, 0, workarea_geom.GetWidth(), workarea_geom.GetHeight());
+  }
+
+  nux::Rect LauncherGeomLocal() const // window-space
+  {
+    const auto workarea_geom_local = WorkareaGeomLocal();
+    const auto x_diff = workarea_geom_local.GetPosition().x - workarea_geom.GetPosition().x;
+    const auto y_diff = workarea_geom_local.GetPosition().y - workarea_geom.GetPosition().y;
+    return nux::Rect(launcher_geom.GetPosition().x + x_diff, launcher_geom.GetPosition().y + y_diff,
+                     launcher_geom.GetWidth(), launcher_geom.GetHeight());
+  }
+
+  nux::Rect DashGeom() const // display-space
   {
     const auto width = workarea_geom.GetWidth() - launcher_geom.GetWidth();
     const auto height = workarea_geom.GetHeight();
@@ -94,13 +108,13 @@ private:
     return nux::Rect(x, y, width, height);
   }
 
-  nux::Rect ScreenGeom() const
+  nux::Rect ScreenGeom() const // display-space
   {
     UScreen* uscreen = UScreen::GetDefault();
     return uscreen->GetScreenGeometry();
   }
 
-  nux::Rect WorkareaGeom() const
+  nux::Rect WorkareaGeom() const // display-space
   {
     Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
 
@@ -185,11 +199,12 @@ private:
     XResizeWindow(dpy, window_id, workarea_geom.GetWidth(), launcher_geom.GetHeight());
 
     // setup input shape
+    const auto &geom = LauncherGeomLocal(); // XShape seems to accept geoms in window-space
     XRectangle input_rectangle = {};
-    input_rectangle.x = launcher_geom.GetPosition().x;
-    input_rectangle.y = launcher_geom.GetPosition().y;
-    input_rectangle.width = launcher_geom.GetWidth();
-    input_rectangle.height = launcher_geom.GetHeight();
+    input_rectangle.x = geom.GetPosition().x;
+    input_rectangle.y = geom.GetPosition().y;
+    input_rectangle.width = geom.GetWidth();
+    input_rectangle.height = geom.GetHeight();
     XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
 
     XFlush(dpy);
@@ -212,11 +227,12 @@ private:
       Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
 
       // set input shape to whole workarea
+      const auto geom = WorkareaGeomLocal();
       XRectangle input_rectangle = {};
-      input_rectangle.x = workarea_geom.GetPosition().x;
-      input_rectangle.y = workarea_geom.GetPosition().y;
-      input_rectangle.width = workarea_geom.GetWidth();
-      input_rectangle.height = workarea_geom.GetHeight();
+      input_rectangle.x = geom.GetPosition().x;
+      input_rectangle.y = geom.GetPosition().y;
+      input_rectangle.width = geom.GetWidth();
+      input_rectangle.height = geom.GetHeight();
       XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
 
       XGrabKeyboard(dpy, window_id, True, GrabModeAsync, GrabModeAsync, CurrentTime);
@@ -227,11 +243,12 @@ private:
       Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
 
       // set input to launcher
+      const auto geom = LauncherGeomLocal();
       XRectangle input_rectangle = {};
-      input_rectangle.x = launcher_geom.GetPosition().x;
-      input_rectangle.y = launcher_geom.GetPosition().y;
-      input_rectangle.width = launcher_geom.GetWidth();
-      input_rectangle.height = launcher_geom.GetHeight();
+      input_rectangle.x = geom.GetPosition().x;
+      input_rectangle.y = geom.GetPosition().y;
+      input_rectangle.width = geom.GetWidth();
+      input_rectangle.height = geom.GetHeight();
       XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
 
       XUngrabKeyboard(dpy, CurrentTime);
@@ -240,7 +257,9 @@ private:
 
   void Init()
   {
-    static unity::BGHash bghash; // FIXME: will attempt to create WindowManager instance (WindowManager::Default())
+    // FIXME: will attempt to cal XWindowManager
+    // need to be called after window is created
+    static unity::BGHash bghash;
 
     SetupSettings();
 
