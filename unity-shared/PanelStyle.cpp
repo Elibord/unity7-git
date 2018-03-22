@@ -146,6 +146,10 @@ int Style::PanelHeight(int monitor) const
   if (panel_height > 0)
     return panel_height;
 
+  // don't do defaults when in standalone mode
+  if (Settings::Instance().is_standalone())
+    return panel_height;
+
   panel_height = Settings::Instance().em(monitor)->CP(BASE_PANEL_HEIGHT);
   return panel_height;
 }
@@ -307,4 +311,3 @@ std::string Style::GetFontDescription(PanelItem item)
 
 } // namespace panel
 } // namespace unity
-
