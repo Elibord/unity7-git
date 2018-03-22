@@ -18,17 +18,16 @@
  *
  */
 
+#include <X11/extensions/shape.h>
+
 #include <Nux/Nux.h>
 #include <Nux/NuxTimerTickSource.h>
 #include <NuxCore/AnimationController.h>
 #include <NuxCore/Logger.h>
 #include <gtk/gtk.h>
 
-#include "unity-shared/BackgroundEffectHelper.h"
-#include "unity-shared/IconRenderer.h"
 #include "unity-shared/InputMonitor.h"
 #include "unity-shared/PanelStyle.h"
-#include "unity-shared/UBusMessages.h"
 #include "unity-shared/UnitySettings.h"
 #include "unity-shared/UScreen.h"
 #include "unity-shared/XWindowManager.h"
@@ -36,7 +35,6 @@
 #include "FavoriteStoreGSettings.h"
 #include "LauncherController.h"
 #include "Launcher.h"
-#include "QuicklistManager.h"
 
 using namespace unity;
 
@@ -66,13 +64,25 @@ struct LauncherWindow
   }
 
 private:
-  nux::Rect LauncherGeom()
+  nux::Rect LauncherGeom() const
   {
     assert(controller);
-    const long launcher_width = controller->launcher().GetWidth();
+    const auto width = controller->launcher().GetWidth();
+    const auto height = workarea_geom.GetHeight();
+    const auto x = workarea_geom.GetPosition().x;
+    const auto y = workarea_geom.GetPosition().y;
 
-    // assuming there is no workarea reservation for launcher itself
+    return nux::Rect(x, y, width, height);
+  }
 
+  nux::Rect ScreenGeom() const
+  {
+    UScreen* uscreen = UScreen::GetDefault();
+    return uscreen->GetScreenGeometry();
+  }
+
+  nux::Rect WorkareaGeom() const
+  {
     Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
 
     Atom ret = 0;
@@ -84,24 +94,19 @@ private:
                                     XInternAtom(dpy, "_NET_WORKAREA", False), 0, 4, False, XA_CARDINAL,
                                     &ret, &format, &nitems, &after, &data);
 
-
-    long launcher_height = 0, launcher_x = 0, launcher_y = 0;
+    long width = 0, height = 0, x = 0, y = 0;
     if (status == Success && ret == XA_CARDINAL && format == 32 && nitems == 4)
     {
       long *workarea = reinterpret_cast<long *>(data);
-      launcher_x = workarea[0];
-      launcher_y = workarea[1];
-      launcher_height = workarea[3];
+      x = workarea[0];
+      y = workarea[1];
+      width = workarea[2];
+      height = workarea[3];
 
       XFree(data);
     }
 
-    // std::cout << "launcher geom: "
-    //   << launcher_width << "x" << launcher_height
-    //   << "+" << launcher_x << "-" << launcher_y
-    //   << std::endl;
-
-    return nux::Rect(launcher_x, launcher_y, launcher_width, launcher_height);
+    return nux::Rect(x, y, width, height);
   }
 
   void SetupBackground()
@@ -149,9 +154,16 @@ private:
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&dock_values[0], dock_values.size());
 
-
     XMoveWindow(dpy, window_id, launcher_geom.GetPosition().x, launcher_geom.GetPosition().y);
-    XResizeWindow(dpy, window_id, launcher_geom.GetWidth(), launcher_geom.GetHeight());
+    XResizeWindow(dpy, window_id, workarea_geom.GetWidth(), launcher_geom.GetHeight());
+
+    // setup input shape
+    XRectangle input_rectangle = {};
+    input_rectangle.x = launcher_geom.GetPosition().x;
+    input_rectangle.y = launcher_geom.GetPosition().y;
+    input_rectangle.width = launcher_geom.GetWidth();
+    input_rectangle.height = launcher_geom.GetHeight();
+    XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
 
     XFlush(dpy);
   }
@@ -164,36 +176,13 @@ private:
   void Init()
   {
     controller.reset(new launcher::Controller(std::make_shared<StandaloneDndManager>(), std::make_shared<ui::EdgeBarrierController>()));
-    launcher_geom = LauncherGeom();
+    screen_geom = ScreenGeom();
+    workarea_geom = WorkareaGeom();
+    launcher_geom = LauncherGeom(); // FIXME: order matters :(
 
     SetupBackground();
     SetupLauncher();
-    SetupWindow();
-
-    // wt->window_configuration.connect([this] (int x, int y, int w, int h) {
-    //   nux::GetGraphicsDisplay()->ResetWindowSize();
-    // });
-
-    QuicklistManager::Default()->quicklist_opened.connect([this] (const nux::ObjectPtr<QuicklistView> &) {
-      UScreen* uscreen = UScreen::GetDefault();
-      const auto screen_width = uscreen->GetScreenGeometry().GetWidth();
-
-      Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
-      Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
-
-      XResizeWindow(dpy, window_id, screen_width, launcher_geom.GetHeight());
-
-      XFlush(dpy);
-    });
-
-    QuicklistManager::Default()->quicklist_closed.connect([this] (const nux::ObjectPtr<QuicklistView> &) {
-      Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
-      Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
-
-      XResizeWindow(dpy, window_id, launcher_geom.GetWidth(), launcher_geom.GetHeight());
-
-      XFlush(dpy);
-    });
+    SetupWindow(); // FIXME: order matters :(
   }
 
   static void ThreadWidgetInit(nux::NThread* thread, void* self)
@@ -201,7 +190,7 @@ private:
     static_cast<LauncherWindow*>(self)->Init();
   }
 
-  internal::FavoriteStoreGSettings favorite_store;
+  internal::FavoriteStoreGSettings favorite_store; // XXX: segfaults w/o this
   unity::Settings settings;
   panel::Style panel_style;
   std::shared_ptr<nux::WindowThread> wt;
@@ -210,13 +199,15 @@ private:
   launcher::Controller::Ptr controller;
   input::Monitor im;
   nux::Rect launcher_geom;
+  nux::Rect screen_geom;
+  nux::Rect workarea_geom;
 };
 
 int main(int argc, char** argv)
 {
   gtk_init(&argc, &argv);
   nux::logging::configure_logging(::getenv("UNITY_LOG_SEVERITY"));
-  nux::NuxInitialize(0);
+  nux::NuxInitialize(nullptr);
 
   LauncherWindow lc;
   lc.Show();
