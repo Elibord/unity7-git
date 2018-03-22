@@ -32,6 +32,7 @@
 #include "unity-shared/InputMonitor.h"
 #include "unity-shared/PanelStyle.h"
 #include "unity-shared/ThumbnailGenerator.h"
+#include "unity-shared/UBusMessages.h"
 #include "unity-shared/UnitySettings.h"
 #include "unity-shared/UScreen.h"
 #include "unity-shared/XWindowManager.h"
@@ -204,9 +205,40 @@ private:
 
   }
 
+  void SetupUBusInterests()
+  {
+    ubus_manager.RegisterInterest(UBUS_OVERLAY_SHOWN, [this] (GVariant *) {
+      Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+      Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
+
+      // set input shape to whole workarea
+      XRectangle input_rectangle = {};
+      input_rectangle.x = workarea_geom.GetPosition().x;
+      input_rectangle.y = workarea_geom.GetPosition().y;
+      input_rectangle.width = workarea_geom.GetWidth();
+      input_rectangle.height = workarea_geom.GetHeight();
+      XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
+    });
+
+    ubus_manager.RegisterInterest(UBUS_OVERLAY_HIDDEN, [this] (GVariant *) {
+      Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+      Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
+
+      // set input to launcher
+      XRectangle input_rectangle = {};
+      input_rectangle.x = launcher_geom.GetPosition().x;
+      input_rectangle.y = launcher_geom.GetPosition().y;
+      input_rectangle.width = launcher_geom.GetWidth();
+      input_rectangle.height = launcher_geom.GetHeight();
+      XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
+    });
+  }
+
   void Init()
   {
     static unity::BGHash bghash; // FIXME: will attempt to create WindowManager instance (WindowManager::Default())
+
+    SetupSettings();
 
     launcher_controller.reset(new launcher::Controller(std::make_shared<StandaloneDndManager>(), std::make_shared<ui::EdgeBarrierController>()));
     dash_controller.reset(new dash::Controller());
@@ -216,10 +248,10 @@ private:
     launcher_geom = LauncherGeom(); // FIXME: order matters :(
     dash_geom = DashGeom();
 
-    SetupSettings();
     SetupBackground();
     SetupLauncher();
     SetupDash();
+    SetupUBusInterests();
     SetupWindow(); // FIXME: order matters :(
   }
 
@@ -244,6 +276,7 @@ private:
   nux::Rect workarea_geom;
   dash::Controller::Ptr dash_controller;
   nux::Rect dash_geom;
+  unity::UBusManager ubus_manager;
 };
 
 int main(int argc, char** argv)
