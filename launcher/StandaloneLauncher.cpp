@@ -218,6 +218,8 @@ private:
       input_rectangle.width = workarea_geom.GetWidth();
       input_rectangle.height = workarea_geom.GetHeight();
       XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
+
+      XGrabKeyboard(dpy, window_id, True, GrabModeAsync, GrabModeAsync, CurrentTime);
     });
 
     ubus_manager.RegisterInterest(UBUS_OVERLAY_HIDDEN, [this] (GVariant *) {
@@ -231,6 +233,8 @@ private:
       input_rectangle.width = launcher_geom.GetWidth();
       input_rectangle.height = launcher_geom.GetHeight();
       XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
+
+      XUngrabKeyboard(dpy, CurrentTime);
     });
   }
 
