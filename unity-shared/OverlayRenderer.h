@@ -88,12 +88,12 @@ public:
   /*
    * Draws just the stack that is overlay behind the inner_geometry using push/pop layers, call in DrawContent() before drawing your content
    */
-  void DrawInner(nux::GraphicsEngine& gfx_context, nux::Geometry const& content_geo, nux::Geometry const& absolute_geo, nux::Geometry const& geo);
+  // void DrawInner(nux::GraphicsEngine& gfx_context, nux::Geometry const& content_geo, nux::Geometry const& absolute_geo, nux::Geometry const& geo);
   
   /* 
    * Call after calling DrawInner and drawing your own content
    */
-  void DrawInnerCleanup(nux::GraphicsEngine& gfx_context, nux::Geometry const& content_geo, nux::Geometry const& absolute_geo, nux::Geometry const& geo);
+  // void DrawInnerCleanup(nux::GraphicsEngine& gfx_context, nux::Geometry const& content_geo, nux::Geometry const& absolute_geo, nux::Geometry const& geo);
   
   sigc::signal<void> need_redraw;
 

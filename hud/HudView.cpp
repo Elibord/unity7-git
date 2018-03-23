@@ -464,9 +464,11 @@ void View::Draw(nux::GraphicsEngine& gfx_context, bool force_draw)
   if (timeline_animating_)
     ProcessGrowShrink();
 
+  /* XXX: similarly to dash: what's the point of having two draw functions?
   nux::Geometry draw_content_geo(layout_->GetGeometry());
   draw_content_geo.height = current_height_;
   renderer_.DrawFull(gfx_context, draw_content_geo, GetAbsoluteGeometry(), GetGeometry(), true);
+  */
 }
 
 void View::DrawContent(nux::GraphicsEngine& gfx_context, bool force_draw)
@@ -474,14 +476,39 @@ void View::DrawContent(nux::GraphicsEngine& gfx_context, bool force_draw)
   nux::Geometry draw_content_geo(layout_->GetGeometry());
   draw_content_geo.height = current_height_;
 
-  renderer_.DrawInner(gfx_context, draw_content_geo, GetAbsoluteGeometry(), GetGeometry());
+  // similarly to dash
+  int renderer_y_offset = renderer_.y_offset();
 
+  nux::Geometry renderer_geo_abs(GetAbsoluteGeometry());
+  renderer_geo_abs.y += renderer_y_offset;
+  renderer_geo_abs.height -= renderer_y_offset;
+
+  nux::Geometry renderer_geo(GetGeometry());
+  renderer_geo.y += renderer_y_offset;
+  renderer_geo.height += renderer_y_offset;
+
+  // clear before drawing
+  nux::ROPConfig ROP;
+  ROP.Blend = !Settings::Instance().is_standalone();
+  ROP.SrcBlend = GL_ONE;
+  ROP.DstBlend = GL_ONE_MINUS_SRC_ALPHA;
+  nux::GetPainter().PushDrawColorLayer(gfx_context, renderer_geo, nux::color::Transparent, true, ROP);
+  nux::GetPainter().PaintActivePaintLayerStack(gfx_context, renderer_geo);
+
+  // renderer_.DrawInner(gfx_context, draw_content_geo, GetAbsoluteGeometry(), GetGeometry());
+  renderer_.DrawFull(gfx_context, draw_content_geo, renderer_geo_abs, renderer_geo, false);
+
+  /*
   gfx_context.PushClippingRectangle(draw_content_geo);
+  */
 
+  /*
   if (IsFullRedraw())
   {
     nux::GetPainter().PushBackgroundStack();
+    */
 
+    // XXX: probbaly duplicate of #1125346 of some sorts (referenced in DashView)
     if (!buttons_.empty()) // See bug #1008603.
     {
       int height = (3_em).CP(scale);
@@ -492,6 +519,7 @@ void View::DrawContent(nux::GraphicsEngine& gfx_context, bool force_draw)
       nux::GetPainter().Draw2DLine(gfx_context, x, y, x, y + height, nux::color::White * 0.13);
     }
 
+    /*
     GetLayout()->ProcessDraw(gfx_context, force_draw);
     nux::GetPainter().PopBackgroundStack();
   }
@@ -499,10 +527,15 @@ void View::DrawContent(nux::GraphicsEngine& gfx_context, bool force_draw)
   {
     GetLayout()->ProcessDraw(gfx_context, force_draw);
   }
+  */
 
+  GetLayout()->ProcessDraw(gfx_context, true);
+
+  /*
   gfx_context.PopClippingRectangle();
 
   renderer_.DrawInnerCleanup(gfx_context, draw_content_geo, GetAbsoluteGeometry(), GetGeometry());
+  */
 }
 
 void View::MouseStealsHudButtonFocus()
@@ -807,4 +840,3 @@ void View::UpdateScale(double scale)
 
 }
 }
-

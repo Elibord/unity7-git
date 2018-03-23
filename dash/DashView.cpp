@@ -725,12 +725,14 @@ nux::Geometry DashView::GetBestFitGeometry(nux::Geometry const& for_geo)
 
 void DashView::Draw(nux::GraphicsEngine& graphics_engine, bool force_draw)
 {
+  /* XXX: is there a point in calling DrawFull if DrawContent will be called later?
   nux::Geometry const& renderer_geo_abs(GetRenderAbsoluteGeometry());
   nux::Geometry renderer_geo(GetGeometry());
   renderer_geo.y += renderer_.y_offset;
   renderer_geo.height += renderer_.y_offset;
 
   renderer_.DrawFull(graphics_engine, content_geo_, renderer_geo_abs, renderer_geo, false);
+  */
 }
 
 void DashView::DrawContent(nux::GraphicsEngine& graphics_engine, bool force_draw)
@@ -745,17 +747,34 @@ void DashView::DrawContent(nux::GraphicsEngine& graphics_engine, bool force_draw
   renderer_geo.y += renderer_y_offset;
   renderer_geo.height += renderer_y_offset;
 
-  renderer_.DrawInner(graphics_engine, content_geo_, renderer_geo_abs, renderer_geo);
+  // clear before drawing
+  nux::ROPConfig ROP;
+  ROP.Blend = !Settings::Instance().is_standalone();
+  ROP.SrcBlend = GL_ONE;
+  ROP.DstBlend = GL_ONE_MINUS_SRC_ALPHA;
+  nux::GetPainter().PushDrawColorLayer(graphics_engine, renderer_geo, nux::color::Transparent, true, ROP);
+  nux::GetPainter().PaintActivePaintLayerStack(graphics_engine, renderer_geo);
 
+  // nux::Geometry const& geo_layout(layout_->GetGeometry());
+  // nux::GetPainter().PaintBackground(graphics_engine, geo_layout);
+
+  /*
   nux::Geometry const& geo_layout(layout_->GetGeometry());
 
   // See lp bug: 1125346 (The sharp white line between dash and launcher is missing)
+  // XXX: perhaps root cause of this bug was double draw and different code in DrawFull and DrawInner
+  // although it must be said that it's not clear which version of draw rendered line correctly
   nux::Geometry clip_geo = geo_layout;
   clip_geo.x += 1;
   if (Settings::Instance().launcher_position() == LauncherPosition::BOTTOM)
     clip_geo.y += renderer_y_offset;
   graphics_engine.PushClippingRectangle(clip_geo);
+  */
 
+  // renderer_.DrawInner(graphics_engine, content_geo_, renderer_geo_abs, renderer_geo);
+  renderer_.DrawFull(graphics_engine, content_geo_, renderer_geo_abs, renderer_geo, false);
+
+  /*
   if (IsFullRedraw())
   {
     nux::GetPainter().PushBackgroundStack();
@@ -764,6 +783,7 @@ void DashView::DrawContent(nux::GraphicsEngine& graphics_engine, bool force_draw
   {
     nux::GetPainter().PaintBackground(graphics_engine, geo_layout);
   }
+  */
 
   if (preview_container_.IsValid())
   {
@@ -789,14 +809,18 @@ void DashView::DrawContent(nux::GraphicsEngine& graphics_engine, bool force_draw
     layout_->ProcessDraw(graphics_engine, force_draw);
   }
 
+  /*
   if (IsFullRedraw())
   {
     nux::GetPainter().PopBackgroundStack();
   }
+  */
 
+  /*
   graphics_engine.PopClippingRectangle();
 
   renderer_.DrawInnerCleanup(graphics_engine, content_geo_, renderer_geo_abs, renderer_geo);
+  */
 }
 
 void DashView::DrawDashSplit(nux::GraphicsEngine& graphics_engine, nux::Geometry& split_clip)

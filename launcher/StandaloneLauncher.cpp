@@ -148,6 +148,7 @@ private:
     settings.form_factor = unity::FormFactor::DESKTOP;
     settings.launcher_position = unity::LauncherPosition::LEFT;
     settings.is_standalone = true;
+    settings.low_gfx = true;
   }
 
   void SetupBackground()

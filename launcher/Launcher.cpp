@@ -1916,7 +1916,8 @@ void Launcher::DrawContent(nux::GraphicsEngine& GfxContext, bool force_draw)
 
   if (!Settings::Instance().low_gfx())
   {
-    if (IsOverlayOpen() && bg_effect_helper_.enabled)
+    // don't do effect helper in standalone
+    if (IsOverlayOpen() && bg_effect_helper_.enabled && !Settings::Instance().is_standalone())
     {
       nux::ObjectPtr<nux::IOpenGLBaseTexture> blur_texture;
 
