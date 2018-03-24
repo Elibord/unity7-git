@@ -69,6 +69,7 @@ public:
   std::string GetFontDescription(PanelItem);
 
   int PanelHeight(int monitor = 0) const;
+  void SetPanelHeight(unsigned height, int monitor = 0);
 
   sigc::signal<void> changed;
 

@@ -154,6 +154,12 @@ int Style::PanelHeight(int monitor) const
   return panel_height;
 }
 
+void Style::SetPanelHeight(unsigned height, int monitor/* = 0*/)
+{
+  panel_heights_[monitor] = height;
+  changed.emit();
+}
+
 void Style::DPIChanged()
 {
   bg_textures_.assign(monitors::MAX, BaseTexturePtr());
