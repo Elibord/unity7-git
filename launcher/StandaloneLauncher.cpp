@@ -63,7 +63,7 @@ struct StandaloneDndManager : XdndManager
 struct LauncherWindow
 {
   LauncherWindow()
-    : wt(nux::CreateGUIThread("Unity Launcher", 100, 100, 0, &LauncherWindow::ThreadWidgetInit, this))
+    : wt(nux::CreateGUIThread("Unity Launcher", 0, 0, 0, &LauncherWindow::ThreadWidgetInit, this))
     , animation_controller(tick_source)
   {}
 
@@ -76,12 +76,25 @@ private:
   nux::Rect LauncherGeom() const // display-space
   {
     assert(launcher_controller);
-    const auto width = launcher_controller->launcher().GetWidth();
-    const auto height = workarea_geom.GetHeight();
-    const auto x = workarea_geom.GetPosition().x;
-    const auto y = workarea_geom.GetPosition().y;
 
-    return nux::Rect(x, y, width, height);
+    if (unity::Settings::Instance().launcher_position == unity::LauncherPosition::LEFT)
+    {
+      const auto width = launcher_controller->launcher().GetWidth();
+      const auto height = workarea_geom.GetHeight();
+      const auto x = workarea_geom.GetPosition().x;
+      const auto y = workarea_geom.GetPosition().y;
+
+      return nux::Rect(x, y, width, height);
+    }
+    else  // BOTTOM
+    {
+      const auto width = workarea_geom.GetWidth();
+      const auto height = launcher_controller->launcher().GetHeight();
+      const auto x = workarea_geom.GetPosition().x;
+      const auto y = workarea_geom.GetPosition().y + workarea_geom.GetHeight() - height;
+
+      return nux::Rect(x, y, width, height);
+    }
   }
 
   nux::Rect WorkareaGeomLocal() const // window-space
@@ -148,13 +161,20 @@ private:
     settings.form_factor = unity::FormFactor::DESKTOP;
     settings.launcher_position = unity::LauncherPosition::LEFT;
     settings.is_standalone = true;
-    settings.low_gfx = true;
+    settings.low_gfx = false;
+  }
+
+  void SetupPanel()
+  {
+    const auto panel_height = workarea_geom.GetPosition().y - screen_geom.GetPosition().y;
+
+    auto &panel_style = panel::Style::Instance();
+    panel_style.SetPanelHeight(panel_height);
   }
 
   void SetupBackground()
   {
     nux::ColorLayer color_layer(nux::color::Transparent);
-    // nux::ColorLayer color_layer(nux::Color(0, 1, 0, 0.1));
     wt->SetWindowBackgroundPaintLayer(&color_layer);
   }
 
@@ -183,42 +203,47 @@ private:
                     (unsigned char *)&hints_values[0], hints_values.size());
 
     // reserve space
-    const std::vector<long> dock_values =
+    std::vector<long> dock_values;
+    if (unity::Settings::Instance().launcher_position == unity::LauncherPosition::LEFT)
     {
-      launcher_geom.GetWidth(), 0, // left, right
-      0, 0, // top, bottom
-      launcher_geom.GetPosition().y, launcher_geom.GetPosition().y + launcher_geom.GetHeight(), // left start y, left end y
-      0, 0, // right start y, right end y
-      0, 0, // top start x, top end x
-      0, 0, // bottom start x, bottom end x
-    };
+      dock_values.assign({
+        launcher_geom.GetWidth(), 0, // left, right
+        0, 0, // top, bottom
+        launcher_geom.GetPosition().y, launcher_geom.GetPosition().y + launcher_geom.GetHeight(), // left start y, left end y
+        0, 0, // right start y, right end y
+        0, 0, // top start x, top end x
+        0, 0, // bottom start x, bottom end x
+      });
+    }
+    else // BOTTOM
+    {
+      dock_values.assign({
+        0, 0, // left, right
+        0, launcher_geom.GetHeight(), // top, bottom
+        0, 0, // left start y, left end y
+        0, 0, // right start y, right end y
+        0, 0, // top start x, top end x
+        launcher_geom.GetPosition().y, launcher_geom.GetPosition().y + launcher_geom.GetHeight(), // bottom start x, bottom end x
+      });
+    }
     XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False),
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&dock_values[0], dock_values.size());
 
-    XMoveWindow(dpy, window_id, launcher_geom.GetPosition().x, launcher_geom.GetPosition().y);
-    XResizeWindow(dpy, window_id, workarea_geom.GetWidth(), launcher_geom.GetHeight());
+    XMoveWindow(dpy, window_id, screen_geom.GetPosition().x, screen_geom.GetPosition().y);
+    XResizeWindow(dpy, window_id, screen_geom.GetWidth(), screen_geom.GetHeight());
 
     // setup input shape
-    const auto &geom = LauncherGeomLocal(); // XShape seems to accept geoms in window-space
+    const auto launcher_geom_local = LauncherGeomLocal(); // XShape seems to accept geoms in window-space
+
     XRectangle input_rectangle = {};
-    input_rectangle.x = geom.GetPosition().x;
-    input_rectangle.y = geom.GetPosition().y;
-    input_rectangle.width = geom.GetWidth();
-    input_rectangle.height = geom.GetHeight();
+    input_rectangle.x = launcher_geom_local.GetPosition().x;
+    input_rectangle.y = launcher_geom_local.GetPosition().y;
+    input_rectangle.width = launcher_geom_local.GetWidth();
+    input_rectangle.height = launcher_geom_local.GetHeight();
     XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
 
     XFlush(dpy);
-  }
-
-  void SetupLauncher()
-  {
-    launcher_controller->launcher().Resize(nux::Point(), launcher_geom.GetHeight());
-  }
-
-  void SetupDash()
-  {
-
   }
 
   void SetupUBusInterests()
@@ -228,7 +253,7 @@ private:
       Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
 
       // set input shape to whole workarea
-      const auto geom = WorkareaGeomLocal();
+      const auto geom = ScreenGeom();
       XRectangle input_rectangle = {};
       input_rectangle.x = geom.GetPosition().x;
       input_rectangle.y = geom.GetPosition().y;
@@ -258,25 +283,33 @@ private:
 
   void Init()
   {
-    // FIXME: will attempt to cal XWindowManager
+    // FIXME: will attempt to call XWindowManager
     // need to be called after window is created
     static unity::BGHash bghash;
 
     SetupSettings();
+    SetupBackground();
+
+    screen_geom = ScreenGeom();
+    workarea_geom = WorkareaGeom();
+
+    SetupPanel();
 
     launcher_controller.reset(new launcher::Controller(std::make_shared<StandaloneDndManager>(), std::make_shared<ui::EdgeBarrierController>()));
     dash_controller.reset(new dash::Controller());
 
-    screen_geom = ScreenGeom();
-    workarea_geom = WorkareaGeom();
     launcher_geom = LauncherGeom(); // FIXME: order matters :(
     dash_geom = DashGeom();
 
-    SetupBackground();
-    SetupLauncher();
-    SetupDash();
     SetupUBusInterests();
-    SetupWindow(); // FIXME: order matters :(
+    SetupWindow();
+
+    // WindowManager::Default().average_color = nux::Color(71.0f/255, 128.0f/255, 97.0f/255); // void
+    // WindowManager::Default().average_color = nux::Color(0.0f/255, 128.0f/255, 0.0f/255); // emerald
+    // WindowManager::Default().average_color = nux::Color(0.0f/255, 0.0f/255, 64.0f/255); // sapphire
+    // WindowManager::Default().average_color = nux::Color(0.0f/255, 64.0f/255, 64.0f/255); // teal
+    // WindowManager::Default().average_color = nux::Color(0.0f, 1.0f/255, 1.0f/255); // dark teal
+    WindowManager::Default().average_color = nux::Color(0.71f/255, 1.28f/255, 0.97f/255); // dark void
   }
 
   static void ThreadWidgetInit(nux::NThread* thread, void* self)
