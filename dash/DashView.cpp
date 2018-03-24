@@ -755,8 +755,6 @@ void DashView::DrawContent(nux::GraphicsEngine& graphics_engine, bool force_draw
   nux::GetPainter().PushDrawColorLayer(graphics_engine, renderer_geo, nux::color::Transparent, true, ROP);
   nux::GetPainter().PaintActivePaintLayerStack(graphics_engine, renderer_geo);
 
-  // nux::Geometry const& geo_layout(layout_->GetGeometry());
-  // nux::GetPainter().PaintBackground(graphics_engine, geo_layout);
 
   /*
   nux::Geometry const& geo_layout(layout_->GetGeometry());
@@ -768,6 +766,7 @@ void DashView::DrawContent(nux::GraphicsEngine& graphics_engine, bool force_draw
   clip_geo.x += 1;
   if (Settings::Instance().launcher_position() == LauncherPosition::BOTTOM)
     clip_geo.y += renderer_y_offset;
+
   graphics_engine.PushClippingRectangle(clip_geo);
   */
 

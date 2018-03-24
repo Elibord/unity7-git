@@ -2146,14 +2146,29 @@ BaseTexturePtr Style::GetDashTopLeftTile(double scale) const
   return pimpl->LoadScaledTexture("overlay_top_left_tile", scale);
 }
 
+BaseTexturePtr Style::GetDashTopLeftTileMask(double scale) const
+{
+  return pimpl->LoadScaledTexture("overlay_top_left_tile_mask", scale);
+}
+
 BaseTexturePtr Style::GetDashLeftTile(double scale) const
 {
   return pimpl->LoadScaledTexture("dash_left_tile", scale);
 }
 
+BaseTexturePtr Style::GetDashLeftTileMask(double scale) const
+{
+  return pimpl->LoadScaledTexture("dash_left_tile_mask", scale);
+}
+
 BaseTexturePtr Style::GetDashTopTile(double scale) const
 {
   return pimpl->LoadScaledTexture("dash_top_tile", scale);
+}
+
+BaseTexturePtr Style::GetDashTopTileMask(double scale) const
+{
+  return pimpl->LoadScaledTexture("dash_top_tile_mask", scale);
 }
 
 BaseTexturePtr Style::GetDashCorner(double scale) const
