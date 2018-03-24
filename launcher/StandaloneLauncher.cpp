@@ -97,20 +97,6 @@ private:
     }
   }
 
-  nux::Rect WorkareaGeomLocal() const // window-space
-  {
-    return nux::Rect(0, 0, workarea_geom.GetWidth(), workarea_geom.GetHeight());
-  }
-
-  nux::Rect LauncherGeomLocal() const // window-space
-  {
-    const auto workarea_geom_local = WorkareaGeomLocal();
-    const auto x_diff = workarea_geom_local.GetPosition().x - workarea_geom.GetPosition().x;
-    const auto y_diff = workarea_geom_local.GetPosition().y - workarea_geom.GetPosition().y;
-    return nux::Rect(launcher_geom.GetPosition().x + x_diff, launcher_geom.GetPosition().y + y_diff,
-                     launcher_geom.GetWidth(), launcher_geom.GetHeight());
-  }
-
   nux::Rect DashGeom() const // display-space
   {
     const auto width = workarea_geom.GetWidth() - launcher_geom.GetWidth();
@@ -161,7 +147,7 @@ private:
     settings.form_factor = unity::FormFactor::DESKTOP;
     settings.launcher_position = unity::LauncherPosition::LEFT;
     settings.is_standalone = true;
-    settings.low_gfx = false;
+    // settings.low_gfx = true;
   }
 
   void SetupPanel()
@@ -234,13 +220,13 @@ private:
     XResizeWindow(dpy, window_id, screen_geom.GetWidth(), screen_geom.GetHeight());
 
     // setup input shape
-    const auto launcher_geom_local = LauncherGeomLocal(); // XShape seems to accept geoms in window-space
+    const auto launcher_geom = LauncherGeom(); // XShape seems to accept geoms in window-space
 
     XRectangle input_rectangle = {};
-    input_rectangle.x = launcher_geom_local.GetPosition().x;
-    input_rectangle.y = launcher_geom_local.GetPosition().y;
-    input_rectangle.width = launcher_geom_local.GetWidth();
-    input_rectangle.height = launcher_geom_local.GetHeight();
+    input_rectangle.x = launcher_geom.GetPosition().x;
+    input_rectangle.y = launcher_geom.GetPosition().y;
+    input_rectangle.width = launcher_geom.GetWidth();
+    input_rectangle.height = launcher_geom.GetHeight();
     XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
 
     XFlush(dpy);
@@ -269,7 +255,7 @@ private:
       Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
 
       // set input to launcher
-      const auto geom = LauncherGeomLocal();
+      const auto geom = LauncherGeom();
       XRectangle input_rectangle = {};
       input_rectangle.x = geom.GetPosition().x;
       input_rectangle.y = geom.GetPosition().y;
