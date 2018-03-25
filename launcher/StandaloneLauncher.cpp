@@ -18,7 +18,9 @@
  *
  */
 
+#include <thread>
 #include <X11/extensions/shape.h>
+#include <X11/XKBlib.h>
 
 #include <Nux/Nux.h>
 #include <Nux/NuxTimerTickSource.h>
@@ -95,16 +97,6 @@ private:
 
       return nux::Rect(x, y, width, height);
     }
-  }
-
-  nux::Rect DashGeom() const // display-space
-  {
-    const auto width = workarea_geom.GetWidth() - launcher_geom.GetWidth();
-    const auto height = workarea_geom.GetHeight();
-    const auto x = launcher_geom.GetPosition().x + launcher_geom.GetWidth();
-    const auto y = workarea_geom.GetPosition().y;
-
-    return nux::Rect(x, y, width, height);
   }
 
   nux::Rect ScreenGeom() const // display-space
@@ -267,6 +259,216 @@ private:
     });
   }
 
+  void GrabSuper()
+  {
+    auto *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+
+    const KeyCode grabs[] =
+    {
+      XKeysymToKeycode(dpy, XK_Super_L),
+      XKeysymToKeycode(dpy, XK_Super_R),
+    };
+
+    // grab keys
+    const auto modifiers = AnyModifier;
+    const auto grab_window = DefaultRootWindow(dpy);
+    const auto owner_events  = True;
+    const auto pointer_mode = GrabModeAsync;
+    const auto keyboard_mode = GrabModeAsync;
+
+    for (const auto &keycode : grabs)
+    {
+      XGrabKey(dpy, keycode, modifiers, grab_window, owner_events,
+               pointer_mode, keyboard_mode);
+    }
+
+    XSync(dpy, False);
+  }
+
+  void GrabNumkeys()
+  {
+    auto *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+
+    const KeyCode grabs[] =
+    {
+      XKeysymToKeycode(dpy, XK_1),
+      XKeysymToKeycode(dpy, XK_2),
+      XKeysymToKeycode(dpy, XK_3),
+      XKeysymToKeycode(dpy, XK_4),
+      XKeysymToKeycode(dpy, XK_5),
+      XKeysymToKeycode(dpy, XK_6),
+      XKeysymToKeycode(dpy, XK_7),
+      XKeysymToKeycode(dpy, XK_8),
+      XKeysymToKeycode(dpy, XK_9),
+      XKeysymToKeycode(dpy, XK_0),
+    };
+
+    // grab keys
+    const auto modifiers = AnyModifier;
+    const auto grab_window = DefaultRootWindow(dpy);
+    const auto owner_events  = True;
+    const auto pointer_mode = GrabModeAsync;
+    const auto keyboard_mode = GrabModeAsync;
+
+    for (const auto &keycode : grabs)
+    {
+      XGrabKey(dpy, keycode, modifiers, grab_window, owner_events,
+               pointer_mode, keyboard_mode);
+    }
+
+    XSync(dpy, False);
+  }
+
+  void UngrabNumkeys()
+  {
+    auto *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+
+    const KeyCode ungrabs[] =
+    {
+      XKeysymToKeycode(dpy, XK_1),
+      XKeysymToKeycode(dpy, XK_2),
+      XKeysymToKeycode(dpy, XK_3),
+      XKeysymToKeycode(dpy, XK_4),
+      XKeysymToKeycode(dpy, XK_5),
+      XKeysymToKeycode(dpy, XK_6),
+      XKeysymToKeycode(dpy, XK_7),
+      XKeysymToKeycode(dpy, XK_8),
+      XKeysymToKeycode(dpy, XK_9),
+      XKeysymToKeycode(dpy, XK_0),
+    };
+
+    // grab keys
+    const auto modifiers = AnyModifier;
+    const auto grab_window = DefaultRootWindow(dpy);
+
+    for (const auto &keycode : ungrabs)
+    {
+      XUngrabKey(dpy, keycode, modifiers, grab_window);
+    }
+
+    XSync(dpy, False);
+  }
+
+  void SetupShortcuts()
+  {
+    GrabSuper();
+
+    // get events from nux, XSelectInput and XNextEvent in thread won't work
+    nux::GetGraphicsDisplay()->AddEventFilter({[] (XEvent event, void *data) {
+      auto *dis = static_cast<LauncherWindow *>(data);
+      return dis->HandleEvent(event);
+    }, this});
+  }
+
+  unsigned XModifiersToNux(unsigned input) const
+  {
+    unsigned modifiers = 0;
+
+    if (input & Mod1Mask)
+      modifiers |= nux::KEY_MODIFIER_ALT;
+
+    if (input & ShiftMask)
+      modifiers |= nux::KEY_MODIFIER_SHIFT;
+
+    if (input & ControlMask)
+      modifiers |= nux::KEY_MODIFIER_CTRL;
+
+    if (input & Mod4Mask)
+      modifiers |= nux::KEY_MODIFIER_SUPER;
+
+    return modifiers;
+  }
+
+  bool HandleEvent(const XEvent &event)
+  {
+    Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+
+    if (event.type != KeyPress && event.type != KeyRelease)
+      return false;
+
+    const int when = std::chrono::duration_cast<std::chrono::milliseconds>(
+      std::chrono::system_clock::now().time_since_epoch()).count();
+
+    const auto code_super_l = XKeysymToKeycode(dpy, XK_Super_L);
+    const auto code_super_r = XKeysymToKeycode(dpy, XK_Super_R);
+    const auto code_1 = XKeysymToKeycode(dpy, XK_1);
+    const auto code_2 = XKeysymToKeycode(dpy, XK_2);
+    const auto code_3 = XKeysymToKeycode(dpy, XK_3);
+    const auto code_4 = XKeysymToKeycode(dpy, XK_4);
+    const auto code_5 = XKeysymToKeycode(dpy, XK_5);
+    const auto code_6 = XKeysymToKeycode(dpy, XK_6);
+    const auto code_7 = XKeysymToKeycode(dpy, XK_7);
+    const auto code_8 = XKeysymToKeycode(dpy, XK_8);
+    const auto code_9 = XKeysymToKeycode(dpy, XK_9);
+    const auto code_0 = XKeysymToKeycode(dpy, XK_0);
+
+    switch (event.type)
+    {
+    case KeyPress:
+      if (event.xkey.keycode == code_super_l || event.xkey.keycode == code_super_r)
+      {
+        GrabNumkeys();
+
+        launcher_controller->HandleLauncherKeyPress(when);
+        return true;
+      }
+      // it's ok not to check if super is pressed
+      // because numkeys won't be grabbed otherwise
+      // and dock don't get keyboard focus too
+      else if (!dash_controller->IsVisible()
+      && (event.xkey.keycode == code_1
+      || event.xkey.keycode == code_2
+      || event.xkey.keycode == code_3
+      || event.xkey.keycode == code_4
+      || event.xkey.keycode == code_5
+      || event.xkey.keycode == code_6
+      || event.xkey.keycode == code_7
+      || event.xkey.keycode == code_8
+      || event.xkey.keycode == code_9
+      || event.xkey.keycode == code_0)) // FIXME: ugly
+      {
+        KeySym key_sym = XkbKeycodeToKeysym(event.xany.display, event.xkey.keycode, 0, 0);
+        if (IsKeypadKey(key_sym))
+        {
+          key_sym = XkbKeycodeToKeysym(event.xany.display, event.xkey.keycode, 0, 1);
+          key_sym = key_sym - XK_KP_0 + XK_0;
+        }
+
+        launcher_controller->HandleLauncherKeyEvent(XModifiersToNux(event.xkey.state), key_sym, event.xkey.time);
+        return true;
+      }
+      break;
+
+    case KeyRelease:
+      if (event.xkey.keycode == code_super_l || event.xkey.keycode == code_super_r)
+      {
+        UngrabNumkeys();
+
+        const bool was_tap = launcher_controller->AboutToShowDash(true, when);
+        launcher_controller->HandleLauncherKeyRelease(was_tap, when);
+
+        if (was_tap)
+        {
+          if (!dash_controller->IsVisible())
+          {
+            if (dash_controller->ShowDash())
+              ubus_manager.SendMessage(UBUS_PLACE_ENTRY_ACTIVATE_REQUEST,
+                                      g_variant_new("(sus)", "home.scope", dash::GOTO_DASH_URI, ""));
+          }
+          else
+          {
+            dash_controller->HideDash();
+          }
+
+          return true;
+        }
+      }
+      break;
+    }
+
+    return false;
+  }
+
   void Init()
   {
     // FIXME: will attempt to call XWindowManager
@@ -285,10 +487,10 @@ private:
     dash_controller.reset(new dash::Controller());
 
     launcher_geom = LauncherGeom(); // FIXME: order matters :(
-    dash_geom = DashGeom();
 
     SetupUBusInterests();
     SetupWindow();
+    SetupShortcuts();
 
     // WindowManager::Default().average_color = nux::Color(71.0f/255, 128.0f/255, 97.0f/255); // void
     // WindowManager::Default().average_color = nux::Color(0.0f/255, 128.0f/255, 0.0f/255); // emerald
@@ -318,7 +520,6 @@ private:
   nux::Rect screen_geom;
   nux::Rect workarea_geom;
   dash::Controller::Ptr dash_controller;
-  nux::Rect dash_geom;
   unity::UBusManager ubus_manager;
 };
 
