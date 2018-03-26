@@ -300,7 +300,7 @@ add_subdirectory(doc)
 add_subdirectory(tools)
 add_subdirectory(UnityCore)
 add_subdirectory(guides)
-add_subdirectory(gnome)
+#add_subdirectory(gnome)
 
 if (ENABLE_UNIT_TESTS)
   add_subdirectory(tests)

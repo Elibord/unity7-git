@@ -3,6 +3,7 @@ add_subdirectory(pam)
 # GSettings Schema
 SET (UNITY_SCHEMAS "com.canonical.Unity.gschema.xml")
 SET (UNITY_TEST_SCHEMAS "external.gschema.xml")
+SET (COMPIZ_SCHEMA "org.compiz.gschema.xml")
 
 # Have an option to not install the schema into where GLib is
 option (GSETTINGS_LOCALINSTALL "Install GSettings Schemas locally instead of to the GLib prefix" OFF)
@@ -24,6 +25,7 @@ endif (_schemas_invalid)
 # Actually install and recomple schemas
 message (STATUS "GSettings schemas will be installed into ${GSETTINGS_DIR}")
 install (FILES ${UNITY_SCHEMAS} DESTINATION ${GSETTINGS_DIR} OPTIONAL)
+install (FILES ${COMPIZ_SCHEMA} DESTINATION ${GSETTINGS_DIR} OPTIONAL)
 install (CODE "message (STATUS \"Compiling GSettings schemas\")")
 install (CODE "execute_process (COMMAND ${_glib_comple_schemas} ${GSETTINGS_DIR})")
 
