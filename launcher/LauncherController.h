@@ -76,6 +76,7 @@ public:
   void KeyNavPrevious();
   bool KeyNavIsActive() const;
 
+  bool IsLauncherGrabbed() const;
   bool IsOverlayOpen() const;
 
   void ClearTooltips();
