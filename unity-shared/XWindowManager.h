@@ -127,6 +127,7 @@ public:
   std::string GetWindowName(Window window_id) const override;
   bool IsOnscreenKeyboard(Window window_id) const override;
 
+private: // X-specific
   std::string GetStringProperty(Window window_id, Atom atom) const override;
   void SetCardinalProperty(Window, Atom, std::vector<long> const&) override;
   std::vector<long> GetCardinalProperty(Window, Atom) const override;

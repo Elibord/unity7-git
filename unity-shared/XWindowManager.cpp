@@ -398,19 +398,19 @@ void XWindowManager::UnShade(Window window_id)
 void XWindowManager::Close(Window window_id)
 {
   auto *dpy = GetDisplay();
-  XEvent ev;
 
+  XEvent ev;
   ev.type                 = ClientMessage;
   ev.xclient.window       = window_id;
   ev.xclient.message_type = GetAtom("WM_PROTOCOLS"); // XXX: probably suboptimal to call XInternAtom() every time
   ev.xclient.format       = 32;
   ev.xclient.data.l[0]    = GetAtom("WM_DELETE_WINDOW");
-  ev.xclient.data.l[1]    = std::time(nullptr);
+  ev.xclient.data.l[1]    = CurrentTime;
   ev.xclient.data.l[2]    = 0;
   ev.xclient.data.l[3]    = 0;
   ev.xclient.data.l[4]    = 0;
 
-  XSendEvent(dpy, window_id, false, NoEventMask, &ev);
+  XSendEvent(dpy, window_id, False, NoEventMask, &ev);
 }
 
 void XWindowManager::Activate(Window window_id)
@@ -426,7 +426,7 @@ void XWindowManager::Activate(Window window_id)
   ev.xclient.message_type = GetAtom("_NET_ACTIVE_WINDOW");
   ev.xclient.format = 32;
   ev.xclient.data.l[0] = 1; // CLIENT_TYPE_APPLICATION // https://specifications.freedesktop.org/wm-spec/1.3/ar01s03.html
-  ev.xclient.data.l[1] = std::time(nullptr);
+  ev.xclient.data.l[1] = CurrentTime;
   ev.xclient.data.l[2] = 0;
   ev.xclient.data.l[3] = 0;
   ev.xclient.data.l[4] = 0;
@@ -502,9 +502,23 @@ void XWindowManager::FocusWindowGroup(std::vector<Window> const& windows,
                                       FocusVisibility, int monitor/* = -1*/,
                                       bool only_top_win/* = true*/)
 {
-  // TODO
-  // if (!windows.empty())
-  //   Activate(windows[0]);
+  if (windows.empty())
+    return;
+
+  const Window active_window = GetActiveWindow();
+  const auto it = std::find(windows.begin(), windows.end(), active_window);
+  const bool any_active = (it != windows.end());
+
+  // if no window is active - active top most one
+  if (!any_active)
+  {
+    Activate(windows[0]);
+  }
+  // if already active - activate next window or cycle through
+  else if (windows.size() > 1)
+  {
+    Activate(it == windows.end() - 1 ? windows[0] : *(it + 1));
+  }
 }
 
 bool XWindowManager::ScaleWindowGroup(std::vector<Window> const& windows,
