@@ -328,20 +328,20 @@ private:
     // populate superkeys
     const std::vector<std::pair<KeyCode, unsigned>> codes =
     {
-      { XKeysymToKeycode(dpy, XK_1), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_2), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_3), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_4), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_5), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_6), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_7), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_8), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_9), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_0), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_T), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_F1), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_Tab), AnyModifier },
-      { XKeysymToKeycode(dpy, XK_Escape), Mod4Mask },
+      { XKeysymToKeycode(dpy, XK_1), Mod4Mask }, // launchers: super+1-0
+      { XKeysymToKeycode(dpy, XK_2), Mod4Mask },
+      { XKeysymToKeycode(dpy, XK_3), Mod4Mask },
+      { XKeysymToKeycode(dpy, XK_4), Mod4Mask },
+      { XKeysymToKeycode(dpy, XK_5), Mod4Mask },
+      { XKeysymToKeycode(dpy, XK_6), Mod4Mask },
+      { XKeysymToKeycode(dpy, XK_7), Mod4Mask },
+      { XKeysymToKeycode(dpy, XK_8), Mod4Mask },
+      { XKeysymToKeycode(dpy, XK_9), Mod4Mask },
+      { XKeysymToKeycode(dpy, XK_0), Mod4Mask },
+      { XKeysymToKeycode(dpy, XK_T), Mod4Mask }, // trash: super+t
+      { XKeysymToKeycode(dpy, XK_F1), Mod4Mask }, // keynav: super+f1
+      { XKeysymToKeycode(dpy, XK_Tab), Mod4Mask }, // tab switch: super+tab
+      { XKeysymToKeycode(dpy, XK_Escape), Mod4Mask }, // cancel tab switch: super+esc
     };
     superkeys.assign(codes.begin(), codes.end());
 
@@ -395,6 +395,9 @@ private:
       if (event.xkey.keycode == code_super_l || event.xkey.keycode == code_super_r)
       {
         GrabSuperkeys();
+
+        if (launcher_controller->KeyNavIsActive())
+          launcher_controller->KeyNavTerminate(false);
 
         launcher_controller->HandleLauncherKeyPress(when);
         return true;
