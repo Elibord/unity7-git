@@ -1699,6 +1699,8 @@ void Launcher::Resize(nux::Point const& offset, int size)
   parent_->SetGeometry(nux::Geometry(offset.x, offset.y, width, height));
 
   ConfigureBarrier();
+
+  changed.emit(nux::Geometry(offset.x, offset.y, width, height));
 }
 
 void Launcher::OnIconNeedsRedraw(AbstractLauncherIcon::Ptr const& icon, int icon_monitor)

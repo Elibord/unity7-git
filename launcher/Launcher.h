@@ -141,6 +141,7 @@ public:
   void SetDndQuirk();
   void UnsetDndQuirk();
 
+  sigc::signal<void, nux::Geometry const&> changed;
   sigc::signal<void, std::string const&, AbstractLauncherIcon::Ptr const&> add_request;
   sigc::signal<void, AbstractLauncherIcon::Ptr const&> remove_request;
   sigc::signal<void> selection_change;
