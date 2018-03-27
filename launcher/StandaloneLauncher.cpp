@@ -73,30 +73,6 @@ struct LauncherWindow
   }
 
 private:
-  nux::Rect LauncherGeom() const // display-space
-  {
-    assert(launcher_controller);
-
-    if (unity::Settings::Instance().launcher_position == unity::LauncherPosition::LEFT)
-    {
-      const auto width = launcher_controller->launcher().GetWidth();
-      const auto height = workarea_geom.GetHeight();
-      const auto x = workarea_geom.GetPosition().x;
-      const auto y = workarea_geom.GetPosition().y;
-
-      return nux::Rect(x, y, width, height);
-    }
-    else  // BOTTOM
-    {
-      const auto width = workarea_geom.GetWidth();
-      const auto height = launcher_controller->launcher().GetHeight();
-      const auto x = workarea_geom.GetPosition().x;
-      const auto y = workarea_geom.GetPosition().y + workarea_geom.GetHeight() - height;
-
-      return nux::Rect(x, y, width, height);
-    }
-  }
-
   nux::Rect ScreenGeom() const // display-space
   {
     auto *uscreen = unity::UScreen::GetDefault();
@@ -142,10 +118,15 @@ private:
 
   void SetupPanel()
   {
+    const auto workarea_geom = WorkareaGeom();
+    const auto screen_geom = ScreenGeom();
+
     const auto panel_height = workarea_geom.GetPosition().y - screen_geom.GetPosition().y;
 
     auto &panel_style = unity::panel::Style::Instance();
     panel_style.SetPanelHeight(panel_height);
+
+    // FIXME: multimonitor
   }
 
   void SetupBackground()
@@ -178,47 +159,6 @@ private:
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&hints_values[0], hints_values.size());
 
-    // reserve space
-    std::vector<long> dock_values;
-    if (unity::Settings::Instance().launcher_position == unity::LauncherPosition::LEFT)
-    {
-      dock_values.assign({
-        launcher_geom.GetWidth(), 0, // left, right
-        0, 0, // top, bottom
-        launcher_geom.GetPosition().y, launcher_geom.GetPosition().y + launcher_geom.GetHeight(), // left start y, left end y
-        0, 0, // right start y, right end y
-        0, 0, // top start x, top end x
-        0, 0, // bottom start x, bottom end x
-      });
-    }
-    else // BOTTOM
-    {
-      dock_values.assign({
-        0, 0, // left, right
-        0, launcher_geom.GetHeight(), // top, bottom
-        0, 0, // left start y, left end y
-        0, 0, // right start y, right end y
-        0, 0, // top start x, top end x
-        launcher_geom.GetPosition().y, launcher_geom.GetPosition().y + launcher_geom.GetHeight(), // bottom start x, bottom end x
-      });
-    }
-    XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False),
-                    XA_CARDINAL, 32, PropModeReplace,
-                    (unsigned char *)&dock_values[0], dock_values.size());
-
-    XMoveWindow(dpy, window_id, screen_geom.GetPosition().x, screen_geom.GetPosition().y);
-    XResizeWindow(dpy, window_id, screen_geom.GetWidth(), screen_geom.GetHeight());
-
-    // setup input shape
-    const auto launcher_geom = LauncherGeom(); // XShape seems to accept geoms in window-space
-
-    XRectangle input_rectangle = {};
-    input_rectangle.x = launcher_geom.GetPosition().x;
-    input_rectangle.y = launcher_geom.GetPosition().y;
-    input_rectangle.width = launcher_geom.GetWidth();
-    input_rectangle.height = launcher_geom.GetHeight();
-    XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
-
     XFlush(dpy);
   }
 
@@ -228,7 +168,7 @@ private:
       Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
       Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
 
-      // set input shape to whole workarea
+      // set input shape to whole screen
       const auto geom = ScreenGeom();
       XRectangle input_rectangle = {};
       input_rectangle.x = geom.GetPosition().x;
@@ -241,18 +181,9 @@ private:
     });
 
     ubus_manager.RegisterInterest(UBUS_OVERLAY_HIDDEN, [this] (GVariant *) {
+      SetupScreens();
+
       Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
-      Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
-
-      // set input to launcher
-      const auto geom = LauncherGeom();
-      XRectangle input_rectangle = {};
-      input_rectangle.x = geom.GetPosition().x;
-      input_rectangle.y = geom.GetPosition().y;
-      input_rectangle.width = geom.GetWidth();
-      input_rectangle.height = geom.GetHeight();
-      XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
-
       XUngrabKeyboard(dpy, CurrentTime);
     });
   }
@@ -356,7 +287,7 @@ private:
 
   unsigned XModifiersToNux(unsigned input) const
   {
-    // reference unityshell.cpp:UnityScreen::XModifiersToNux
+    // reference: unityshell.cpp:UnityScreen::XModifiersToNux
 
     unsigned modifiers = 0;
 
@@ -491,6 +422,99 @@ private:
     return false;
   }
 
+  void SetupScreens()
+  {
+    // const auto *uscreen = unity::UScreen::GetDefault();
+    // const auto primary_monitor = uscreen->GetPrimaryMonitor();
+    // const auto geoms = uscreen->GetMonitors();
+
+    const auto screen_geom = ScreenGeom();
+
+    auto *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+    Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
+
+    // resize window to whole screen
+    XMoveWindow(dpy, window_id, screen_geom.GetPosition().x, screen_geom.GetPosition().y);
+    XResizeWindow(dpy, window_id, screen_geom.GetWidth(), screen_geom.GetHeight());
+
+    // unreserve space
+    const std::vector<long> unreserve_values =
+    {
+      0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    };
+    XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False),
+                    XA_CARDINAL, 32, PropModeReplace,
+                    (unsigned char *)&unreserve_values[0], unreserve_values.size());
+
+    // reserve space for launchers
+    for (const auto &launcher_geom : launchers)
+    {
+      std::vector<long> dock_values;
+      if (unity::Settings::Instance().launcher_position == unity::LauncherPosition::LEFT)
+      {
+        dock_values.assign({
+          launcher_geom.GetWidth(), 0, // left, right
+          0, 0, // top, bottom
+          launcher_geom.GetPosition().y, launcher_geom.GetPosition().y + launcher_geom.GetHeight(), // left start y, left end y
+          0, 0, // right start y, right end y
+          0, 0, // top start x, top end x
+          0, 0, // bottom start x, bottom end x
+        });
+      }
+      else // BOTTOM
+      {
+        dock_values.assign({
+          0, 0, // left, right
+          0, launcher_geom.GetHeight(), // top, bottom
+          0, 0, // left start y, left end y
+          0, 0, // right start y, right end y
+          0, 0, // top start x, top end x
+          launcher_geom.GetPosition().x, launcher_geom.GetPosition().x + launcher_geom.GetWidth(), // bottom start x, bottom end x
+        });
+      }
+      XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False),
+                      XA_CARDINAL, 32, PropModeReplace,
+                      (unsigned char *)&dock_values[0], dock_values.size());
+    }
+
+    // restore input to whole screen
+    XRectangle screen_rectangle = {};
+    screen_rectangle.x = screen_geom.GetPosition().x;
+    screen_rectangle.y = screen_geom.GetPosition().y;
+    screen_rectangle.width = screen_geom.GetWidth();
+    screen_rectangle.height = screen_geom.GetHeight();
+    XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &screen_rectangle, 1, ShapeSet, 0);
+
+    // reconfigure input on launchers
+    for (const auto &launcher_geom : launchers)
+    {
+      XRectangle input_rectangle = {};
+      input_rectangle.x = launcher_geom.GetPosition().x;
+      input_rectangle.y = launcher_geom.GetPosition().y;
+      input_rectangle.width = launcher_geom.GetWidth();
+      input_rectangle.height = launcher_geom.GetHeight();
+      XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
+    }
+
+    XFlush(dpy);
+  }
+
+  void SetupSignals()
+  {
+    auto *uscreen = unity::UScreen::GetDefault();
+    uscreen->changed.connect([this] (int primary_monitor, const std::vector<nux::Geometry> &geoms) {
+      SetupScreens();
+    });
+
+    launcher_controller->launcher().changed.connect([this] (const nux::Geometry &geom) {
+      // FIXME: multimonitor
+      launchers.clear();
+      launchers.push_back(geom);
+
+      SetupScreens();
+    });
+  }
+
   void Init()
   {
     // FIXME: will attempt to call XWindowManager
@@ -500,9 +524,6 @@ private:
     SetupSettings();
     SetupBackground();
 
-    screen_geom = ScreenGeom();
-    workarea_geom = WorkareaGeom();
-
     SetupPanel();
 
     launcher_controller.reset(new unity::launcher::Controller(
@@ -510,11 +531,11 @@ private:
       std::make_shared<unity::ui::EdgeBarrierController>()));
     dash_controller.reset(new unity::dash::Controller());
 
-    launcher_geom = LauncherGeom(); // FIXME: order matters :(
-
     SetupUBusInterests();
     SetupWindow();
+    SetupScreens();
     SetupShortcuts();
+    SetupSignals();
 
     // WindowManager::Default().average_color = nux::Color(71.0f/255, 128.0f/255, 97.0f/255); // void
     // WindowManager::Default().average_color = nux::Color(0.0f/255, 128.0f/255, 0.0f/255); // emerald
@@ -540,12 +561,10 @@ private:
   nux::animation::AnimationController animation_controller;
   unity::launcher::Controller::Ptr launcher_controller;
   unity::input::Monitor im;
-  nux::Rect launcher_geom;
-  nux::Rect screen_geom;
-  nux::Rect workarea_geom;
   unity::dash::Controller::Ptr dash_controller;
   unity::UBusManager ubus_manager;
   std::vector<std::pair<KeyCode, unsigned> > superkeys;
+  std::vector<nux::Geometry> launchers;
 };
 
 int main(int argc, char **argv)
