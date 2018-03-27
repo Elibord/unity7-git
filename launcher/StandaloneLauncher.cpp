@@ -175,7 +175,8 @@ private:
       input_rectangle.y = geom.GetPosition().y;
       input_rectangle.width = geom.GetWidth();
       input_rectangle.height = geom.GetHeight();
-      XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
+      XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0,
+        &input_rectangle, 1, ShapeSet, 0);
 
       XGrabKeyboard(dpy, window_id, True, GrabModeAsync, GrabModeAsync, CurrentTime);
     });
@@ -424,9 +425,18 @@ private:
 
   void SetupScreens()
   {
-    // const auto *uscreen = unity::UScreen::GetDefault();
-    // const auto primary_monitor = uscreen->GetPrimaryMonitor();
-    // const auto geoms = uscreen->GetMonitors();
+    // first get rid of old slots if any
+    const auto &launchers = launcher_controller->launchers();
+    for (auto &slot : launcher_slots)
+      slot.disconnect();
+
+    // connect all launchers so they trigger SetupScreen() on change
+    // this shouldn't happen often: on resolution change and display on/off i think
+    launcher_slots.clear();
+    launcher_slots.push_back(
+      launcher_controller->launcher().changed.connect([this] (const nux::Geometry &geom) {
+        SetupScreens();
+    }));
 
     const auto screen_geom = ScreenGeom();
 
@@ -446,9 +456,13 @@ private:
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&unreserve_values[0], unreserve_values.size());
 
+    // FIXME: can't set strut in the middle of the screen with _NET_WM_STRUT_PARTIAL
     // reserve space for launchers
-    for (const auto &launcher_geom : launchers)
+    for (size_t i = 0; i < launchers.size(); ++i)
     {
+      const auto &launcher = launchers[i];
+      const auto launcher_geom = launcher->GetParent()->GetGeometry();
+
       std::vector<long> dock_values;
       if (unity::Settings::Instance().launcher_position == unity::LauncherPosition::LEFT)
       {
@@ -473,7 +487,7 @@ private:
         });
       }
       XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False),
-                      XA_CARDINAL, 32, PropModeReplace,
+                      XA_CARDINAL, 32, (i == 0 ? PropModeReplace : PropModeAppend),
                       (unsigned char *)&dock_values[0], dock_values.size());
     }
 
@@ -483,36 +497,28 @@ private:
     screen_rectangle.y = screen_geom.GetPosition().y;
     screen_rectangle.width = screen_geom.GetWidth();
     screen_rectangle.height = screen_geom.GetHeight();
-    XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &screen_rectangle, 1, ShapeSet, 0);
+    XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0,
+      &screen_rectangle, 1, ShapeSet, 0);
 
     // reconfigure input on launchers
-    for (const auto &launcher_geom : launchers)
+    std::vector<XRectangle> input_rectangles(launchers.size());
+    for (const auto &launcher : launchers)
     {
+      const auto &launcher_geom = launcher->GetParent()->GetGeometry();
+
       XRectangle input_rectangle = {};
       input_rectangle.x = launcher_geom.GetPosition().x;
       input_rectangle.y = launcher_geom.GetPosition().y;
       input_rectangle.width = launcher_geom.GetWidth();
       input_rectangle.height = launcher_geom.GetHeight();
-      XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0, &input_rectangle, 1, ShapeSet, 0);
+
+      input_rectangles.push_back(input_rectangle);
     }
 
+    XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0,
+      &input_rectangles[0], input_rectangles.size(), ShapeSet, 0);
+
     XFlush(dpy);
-  }
-
-  void SetupSignals()
-  {
-    auto *uscreen = unity::UScreen::GetDefault();
-    uscreen->changed.connect([this] (int primary_monitor, const std::vector<nux::Geometry> &geoms) {
-      SetupScreens();
-    });
-
-    launcher_controller->launcher().changed.connect([this] (const nux::Geometry &geom) {
-      // FIXME: multimonitor
-      launchers.clear();
-      launchers.push_back(geom);
-
-      SetupScreens();
-    });
   }
 
   void Init()
@@ -535,7 +541,6 @@ private:
     SetupWindow();
     SetupScreens();
     SetupShortcuts();
-    SetupSignals();
 
     // WindowManager::Default().average_color = nux::Color(71.0f/255, 128.0f/255, 97.0f/255); // void
     // WindowManager::Default().average_color = nux::Color(0.0f/255, 128.0f/255, 0.0f/255); // emerald
@@ -564,7 +569,7 @@ private:
   unity::dash::Controller::Ptr dash_controller;
   unity::UBusManager ubus_manager;
   std::vector<std::pair<KeyCode, unsigned> > superkeys;
-  std::vector<nux::Geometry> launchers;
+  std::vector<sigc::connection> launcher_slots;
 };
 
 int main(int argc, char **argv)
