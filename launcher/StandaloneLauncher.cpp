@@ -47,11 +47,91 @@
 
 #include <UnityCore/GSettingsScopes.h>
 
+namespace
+{
+static const std::string window_title = "Chromatic";
+static const std::string wm_class = "chromatic";
+}
+
+namespace atom
+{
+Atom _XROOTPMAP_ID = 0;
+}
+
 namespace unity
 {
 WindowManagerPtr create_window_manager()
 {
   return WindowManagerPtr(new XWindowManager());
+}
+}
+
+namespace
+{
+nux::Color ComputeAverageWallpaperColor(Display *dpy)
+{
+  nux::Color average_color;
+
+  auto root = DefaultRootWindow(dpy);
+
+  XWindowAttributes attrs = {};
+  XGetWindowAttributes(dpy, root, &attrs);
+
+  Pixmap root_pixmap = None;
+  Atom act_type = 0;
+  int act_format = 0;
+  unsigned long nitems = 0, bytes_after = 0;
+  unsigned char *data = nullptr;
+
+  assert(atom::_XROOTPMAP_ID != 0);
+  if (XGetWindowProperty(dpy, root, atom::_XROOTPMAP_ID, 0, 1, False,
+                         XA_PIXMAP, &act_type, &act_format, &nitems, &bytes_after, &data) == Success)
+  {
+    if (data != nullptr)
+    {
+      root_pixmap = *((Pixmap *) data);
+      XFree(data);
+    }
+  }
+
+  if (root_pixmap == None)
+    return average_color;
+
+  XImage *img = XGetImage(dpy, root_pixmap, 0, 0, attrs.width, attrs.height, ~0, ZPixmap);
+  // XFreePixmap(dpy, root_pixmap);
+
+  if (img == nullptr || img->depth < 24)
+    return average_color;
+
+  auto add_avg = [] (float prev_avg, float value, unsigned long samples)
+  {
+    return (prev_avg * samples + value) / (samples + 1);
+  };
+
+  float red = 0, green = 0, blue = 0;
+  unsigned long samples = 0;
+  for (int y = 0; y < img->height; ++y)
+  {
+    for (int x = 0; x < img->width; ++x)
+    {
+      const unsigned long pixel = XGetPixel(img,x,y);
+      const float pixel_red = (pixel >> 16) / 255.0;
+      const float pixel_green = ((pixel & 0xFF00) >> 8) / 255.0;
+      const float pixel_blue = (pixel & 0xFF) / 255.0;
+
+      red = add_avg(red, pixel_red, samples);
+      green = add_avg(green, pixel_green, samples);
+      blue = add_avg(blue, pixel_blue, samples);
+
+      ++samples;
+    }
+  }
+
+  XDestroyImage(img);
+
+  average_color = nux::Color(red, green, blue, 1.0f);
+
+  return average_color;
 }
 }
 
@@ -63,13 +143,15 @@ struct StandaloneDndManager : unity::XdndManager
 struct LauncherWindow
 {
   LauncherWindow()
-    : wt(nux::CreateGUIThread("Unity Launcher", 0, 0, 0, &LauncherWindow::ThreadWidgetInit, this))
-    , animation_controller(tick_source)
+  : animation_controller(tick_source)
   {}
 
-  void Show()
+  static void ThreadWidgetInit(nux::NThread *thread, void *)
   {
-    wt->Run(nullptr);
+    // LauncherWindow is need to be created after actual window is created
+    // otherwise BGHash will crash
+    static LauncherWindow self;
+    self.Init();
   }
 
 private:
@@ -121,18 +203,34 @@ private:
     const auto workarea_geom = WorkareaGeom();
     const auto screen_geom = ScreenGeom();
 
+    // XXX: well, this will only work if there is one panel across all monitors
+    // or panels oof the same height on each monitor
+    // so this is only a workaround sadly
     const auto panel_height = workarea_geom.GetPosition().y - screen_geom.GetPosition().y;
 
     auto &panel_style = unity::panel::Style::Instance();
-    panel_style.SetPanelHeight(panel_height);
-
-    // FIXME: multimonitor
+    for (size_t i = 0; i < unity::UScreen::GetDefault()->GetMonitors().size(); ++i)
+      panel_style.SetPanelHeight(panel_height, i);
   }
 
   void SetupBackground()
   {
     nux::ColorLayer color_layer(nux::color::Transparent);
-    wt->SetWindowBackgroundPaintLayer(&color_layer);
+    nux::GetWindowThread()->SetWindowBackgroundPaintLayer(&color_layer);
+
+    Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+    const auto color = ComputeAverageWallpaperColor(dpy);
+
+    const double MAX_USHORT = std::numeric_limits<unsigned short>::max ();
+    unsigned short compiz_color[4] = { 0 };
+    compiz_color[0] = color.red * MAX_USHORT;
+    compiz_color[1] = color.green * MAX_USHORT;
+    compiz_color[2] = color.blue * MAX_USHORT;
+    compiz_color[3] = MAX_USHORT; // alpha, currently unused
+
+    // State::Running for smooth transition between colors
+    // bghash will set WindowManager::average_color
+    bghash.UpdateColor(compiz_color, nux::animation::Animation::State::Running);
   }
 
   void SetupWindow()
@@ -158,6 +256,12 @@ private:
     XChangeProperty(dpy, window_id, XInternAtom(dpy, "_MOTIF_WM_HINTS", False),
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&hints_values[0], hints_values.size());
+
+    // set class hint (WM_CLASS)
+    XClassHint class_hint;
+    class_hint.res_name = (char *)wm_class.c_str();
+    class_hint.res_class = (char *)window_title.c_str();
+    XSetClassHint(dpy, window_id, &class_hint);
 
     XFlush(dpy);
   }
@@ -313,7 +417,9 @@ private:
 
     Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
 
-    if (event.type != KeyPress && event.type != KeyRelease && event.type != MotionNotify)
+    if (event.type != KeyPress && event.type != KeyRelease
+    && event.type != MotionNotify
+    && event.type != PropertyNotify)
       return false;
 
     const int when = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -322,7 +428,12 @@ private:
     static const auto code_super_l = XKeysymToKeycode(dpy, XK_Super_L);
     static const auto code_super_r = XKeysymToKeycode(dpy, XK_Super_R);
 
-    if (event.type == MotionNotify)
+    if (event.type == PropertyNotify)
+    {
+      if (event.xproperty.atom == atom::_XROOTPMAP_ID)
+        SetupBackground();
+    }
+    else if (event.type == MotionNotify)
     {
       const auto x = event.xmotion.x_root, y = event.xmotion.y_root;
       const auto &launchers = launcher_controller->launchers();
@@ -569,9 +680,9 @@ private:
 
   void Init()
   {
-    // FIXME: will attempt to call XWindowManager
-    // need to be called after window is created
-    static unity::BGHash bghash;
+    // setup atoms
+    Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+    atom::_XROOTPMAP_ID = XInternAtom(dpy, "_XROOTPMAP_ID", False);
 
     // settings need to be setup first because it will trigger some signals and slot in other parts
     SetupSettings();
@@ -597,24 +708,20 @@ private:
     unity::WindowManager::Default().average_color = nux::Color(0.71f/255, 1.28f/255, 0.97f/255); // dark void
   }
 
-  static void ThreadWidgetInit(nux::NThread* thread, void* self)
-  {
-    static_cast<LauncherWindow*>(self)->Init();
-  }
-
   unity::internal::FavoriteStoreGSettings favorite_store; // XXX: segfaults w/o this
   unity::Settings settings;
   unity::FontSettings font_settings;
   unity::panel::Style panel_style;
   unity::ThumbnailGenerator thumb_generator;
   unity::dash::Style dash_style;
-  std::shared_ptr<nux::WindowThread> wt;
   nux::NuxTimerTickSource tick_source;
   nux::animation::AnimationController animation_controller;
   unity::launcher::Controller::Ptr launcher_controller;
   unity::input::Monitor im;
   unity::dash::Controller::Ptr dash_controller;
   unity::UBusManager ubus_manager;
+  unity::BGHash bghash; // will attempt to call XWindowManager, need to be called after window is created
+  //
   std::vector<std::pair<KeyCode, unsigned> > superkeys;
   std::vector<sigc::connection> launcher_slots;
 };
@@ -626,8 +733,10 @@ int main(int argc, char **argv)
 
   nux::logging::configure_logging(::getenv("UNITY_LOG_SEVERITY"));
 
-  LauncherWindow lc;
-  lc.Show();
+  std::shared_ptr<nux::WindowThread> wt(
+    nux::CreateGUIThread(window_title.c_str(), 0, 0, 0,
+    &LauncherWindow::ThreadWidgetInit));
+  wt->Run(nullptr);
 
   return 0;
 }
