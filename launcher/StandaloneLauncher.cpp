@@ -182,7 +182,7 @@ private:
     });
 
     ubus_manager.RegisterInterest(UBUS_OVERLAY_HIDDEN, [this] (GVariant *) {
-      SetupScreens();
+      SetupScreens(); // FIXME: it's overkill to SetupScreens() here
 
       Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
       XUngrabKeyboard(dpy, CurrentTime);
@@ -313,7 +313,7 @@ private:
 
     Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
 
-    if (event.type != KeyPress && event.type != KeyRelease)
+    if (event.type != KeyPress && event.type != KeyRelease && event.type != MotionNotify)
       return false;
 
     const int when = std::chrono::duration_cast<std::chrono::milliseconds>(
@@ -322,7 +322,25 @@ private:
     static const auto code_super_l = XKeysymToKeycode(dpy, XK_Super_L);
     static const auto code_super_r = XKeysymToKeycode(dpy, XK_Super_R);
 
-    if (event.type == KeyPress)
+    if (event.type == MotionNotify)
+    {
+      const auto x = event.xmotion.x_root, y = event.xmotion.y_root;
+      const auto &launchers = launcher_controller->launchers();
+
+      for (auto &launcher : launchers)
+      {
+        const auto geom = launcher->GetParent()->GetGeometry();
+
+        if (geom.IsInside(nux::Point(x, y)))
+        {
+          if (launcher->Hidden())
+            launcher->SetHidden(false);
+        }
+      }
+
+      return false;
+    }
+    else if (event.type == KeyPress)
     {
       if (event.xkey.keycode == code_super_l || event.xkey.keycode == code_super_r)
       {
@@ -457,10 +475,38 @@ private:
                     (unsigned char *)&unreserve_values[0], unreserve_values.size());
 
     // FIXME: can't set strut in the middle of the screen with _NET_WM_STRUT_PARTIAL
+    // this is a workaround: set strut to left-most and/or bottom-most launcher only
+    size_t left_most = (size_t)(-1);
+    size_t bottom_most = (size_t)(-1);
+    for (size_t i = 0; i < launchers.size(); ++i)
+    {
+      const auto &launcher = launchers[i];
+      const auto geom = launcher->GetParent()->GetGeometry();
+      if (left_most == (size_t)(-1)
+      || geom.GetPosition().x < launchers[left_most]->GetParent()->GetGeometry().GetPosition().x)
+      {
+        left_most = i;
+      }
+
+      if (bottom_most == (size_t)(-1)
+      || geom.GetPosition().y > launchers[bottom_most]->GetParent()->GetGeometry().GetPosition().y)
+      {
+        bottom_most = i;
+      }
+    }
+
     // reserve space for launchers
     for (size_t i = 0; i < launchers.size(); ++i)
     {
       const auto &launcher = launchers[i];
+
+      // switch launchers that not left- or bottom-most to autohide
+      if (i != left_most && i != bottom_most)
+      {
+        launcher->OverrideHideMode(unity::launcher::LauncherHideMode::LAUNCHER_HIDE_AUTOHIDE);
+        continue;
+      }
+
       const auto launcher_geom = launcher->GetParent()->GetGeometry();
 
       std::vector<long> dock_values;
@@ -527,6 +573,7 @@ private:
     // need to be called after window is created
     static unity::BGHash bghash;
 
+    // settings need to be setup first because it will trigger some signals and slot in other parts
     SetupSettings();
     SetupBackground();
 
