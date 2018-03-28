@@ -92,6 +92,7 @@ public:
     return hidden_;
   }
 
+  void SetHidden(bool hidden);
   void ForceReveal(bool force);
   void ShowShortcuts(bool show);
 
@@ -165,6 +166,8 @@ public:
 #ifdef NUX_GESTURES_SUPPORT
   virtual nux::GestureDeliveryRequest GestureEvent(const nux::GestureEvent &event);
 #endif
+
+  void OverrideHideMode(LauncherHideMode hidemode);
 
 protected:
   // Introspectable methods
@@ -248,8 +251,6 @@ private:
   float IconStartingPulseValue(AbstractLauncherIcon::Ptr const& icon) const;
   float IconBackgroundIntensity(AbstractLauncherIcon::Ptr const& icon) const;
   float IconProgressBias(AbstractLauncherIcon::Ptr const& icon) const;
-
-  void SetHidden(bool hidden);
 
   void UpdateChangeInMousePosition(int delta_x, int delta_y);
 
@@ -339,6 +340,9 @@ private:
   bool initial_drag_animation_;
   bool dash_is_open_;
   bool hud_is_open_;
+
+  bool hidemode_overriden_ = false;
+  LauncherHideMode hidemode_override_ = LauncherHideMode::LAUNCHER_HIDE_NEVER;
 
   LauncherActionState launcher_action_state_;
 

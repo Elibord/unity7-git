@@ -242,7 +242,7 @@ void Launcher::OnDragUpdate(const nux::GestureEvent &event)
 {
   auto& wm = WindowManager::Default();
 
-  if (options()->hide_mode == LAUNCHER_HIDE_AUTOHIDE &&
+  if (GetHideMode() == LAUNCHER_HIDE_AUTOHIDE &&
     !wm.IsScaleActive() && !wm.IsExpoActive() &&
     !dash_is_open_ && !hud_is_open_)
   {
@@ -272,7 +272,9 @@ void Launcher::AddProperties(debug::IntrospectionData& introspection)
   .add("autohide-progress", auto_hide_animation_.GetCurrentValue())
   .add("dnd-delta", dnd_delta_y_)
   .add("hovered", hovered_)
-  .add("hidemode", options()->hide_mode)
+  // XXX: if options()->hide_mode is used here when hide mode is overriden
+  // background stays on screen, but launchers are hiding. wut?
+  .add("hidemode", GetHideMode())
   .add("hidden", hidden_)
   .add("is_showing", ! hidden_)
   .add("monitor", monitor())
@@ -852,7 +854,7 @@ void Launcher::RenderArgs(std::list<RenderArg> &launcher_args,
 
   float autohide_offset = 0.0f;
   *launcher_alpha = 1.0f;
-  if (options()->hide_mode != LAUNCHER_HIDE_NEVER || hide_machine_.GetQuirk(LauncherHideMachine::LOCK_HIDE))
+  if (GetHideMode() != LAUNCHER_HIDE_NEVER || hide_machine_.GetQuirk(LauncherHideMachine::LOCK_HIDE))
   {
     float autohide_progress = auto_hide_animation_.GetCurrentValue() * (1.0f - DragOutProgress());
     if (dash_is_open_)
@@ -877,7 +879,7 @@ void Launcher::RenderArgs(std::list<RenderArg> &launcher_args,
     }
   }
 
-  if (options()->hide_mode != LAUNCHER_HIDE_NEVER)
+  if (GetHideMode() != LAUNCHER_HIDE_NEVER)
   {
     float drag_hide_progress = dnd_hide_animation_.GetCurrentValue();
     if (launcher_position_ == LauncherPosition::LEFT)
@@ -890,7 +892,7 @@ void Launcher::RenderArgs(std::list<RenderArg> &launcher_args,
   // Inform the painter where to paint the box
   box_geo = geo;
 
-  if (options()->hide_mode != LAUNCHER_HIDE_NEVER || hide_machine_.GetQuirk(LauncherHideMachine::LOCK_HIDE))
+  if (GetHideMode() != LAUNCHER_HIDE_NEVER || hide_machine_.GetQuirk(LauncherHideMachine::LOCK_HIDE))
   {
     if (launcher_position_ == LauncherPosition::LEFT)
       box_geo.x += autohide_offset;
@@ -974,7 +976,7 @@ void Launcher::RenderArgs(std::list<RenderArg> &launcher_args,
     RenderArg arg;
     AbstractLauncherIcon::Ptr const& icon = *it;
 
-    if (options()->hide_mode == LAUNCHER_HIDE_AUTOHIDE)
+    if (GetHideMode() == LAUNCHER_HIDE_AUTOHIDE)
       HandleUrgentIcon(icon);
 
     FillRenderArg(icon, arg, center, parent_abs_geo, folding_threshold, folded_size, folded_spacing,
@@ -1103,7 +1105,7 @@ void Launcher::OnOverlayShown(GVariant* data)
       hide_machine_.SetQuirk(LauncherHideMachine::PLACES_VISIBLE, true);
       hover_machine_.SetQuirk(LauncherHoverMachine::PLACES_VISIBLE, true);
 
-      if (options()->hide_mode != LAUNCHER_HIDE_NEVER)
+      if (GetHideMode() != LAUNCHER_HIDE_NEVER)
         animation::StartOrReverse(dash_showing_animation_, animation::Direction::FORWARD);
     }
     if (identity == "hud")
@@ -1297,7 +1299,7 @@ void Launcher::OnSpreadChanged()
 
 LauncherHideMode Launcher::GetHideMode() const
 {
-  return options()->hide_mode;
+  return (hidemode_overriden_ ? hidemode_override_ : options()->hide_mode);
 }
 
 /* End Launcher Show/Hide logic */
@@ -1336,7 +1338,7 @@ void Launcher::OnMonitorChanged(int new_monitor)
 void Launcher::UpdateOptions(Options::Ptr options)
 {
   SetIconSize(options->tile_size, options->icon_size);
-  SetHideMode(options->hide_mode);
+  SetHideMode(GetHideMode());
   SetScrollInactiveIcons(options->scroll_inactive_icons);
   SetLauncherMinimizeWindow(options->minimize_window_on_click);
   OnMonitorChanged(monitor);
@@ -1374,6 +1376,14 @@ void Launcher::ConfigureBarrier()
 
   hide_machine_.reveal_pressure = options()->edge_reveal_pressure() * reveal_responsiveness_mult;
   hide_machine_.edge_decay_rate = options()->edge_decay_rate() * decay_responsiveness_mult;
+}
+
+void Launcher::OverrideHideMode(LauncherHideMode hidemode)
+{
+  hidemode_overriden_ = true; // one-way
+  hidemode_override_ = hidemode;
+
+  SetHideMode(hidemode);
 }
 
 void Launcher::SetHideMode(LauncherHideMode hidemode)
@@ -1850,7 +1860,7 @@ void Launcher::DrawContent(nux::GraphicsEngine& GfxContext, bool force_draw)
   else
     bkg_box.height -= SIDE_LINE_WIDTH.CP(cv_);
 
-  if (options()->hide_mode != LAUNCHER_HIDE_NEVER &&
+  if (GetHideMode() != LAUNCHER_HIDE_NEVER &&
       bkg_box.x + bkg_box.width <= 0 &&
       hide_machine_.reveal_progress <= 0 &&
       !force_show_window)
@@ -2878,7 +2888,7 @@ void Launcher::ProcessDndMove(int x, int y, std::list<char*> mimes)
 
   SetMousePosition(x - parent_->GetGeometry().x, y - parent_->GetGeometry().y);
 
-  if (options()->hide_mode != LAUNCHER_HIDE_NEVER)
+  if (GetHideMode() != LAUNCHER_HIDE_NEVER)
   {
     if ((monitor() == 0 && !IsOverlayOpen() && mouse_position_.x == 0 && !drag_edge_touching_) &&
         ((launcher_position_ == LauncherPosition::LEFT &&
