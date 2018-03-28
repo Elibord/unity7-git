@@ -380,6 +380,11 @@ private:
       { XKeysymToKeycode(dpy, XK_T), Mod4Mask }, // trash: super+t
       { XKeysymToKeycode(dpy, XK_F1), Mod4Mask }, // keynav: super+f1
       { XKeysymToKeycode(dpy, XK_Tab), Mod4Mask }, // tab switch: super+tab
+      { XKeysymToKeycode(dpy, XK_A), Mod4Mask }, // dash: applications.scope
+      { XKeysymToKeycode(dpy, XK_F), Mod4Mask }, // dash: files.scope
+      { XKeysymToKeycode(dpy, XK_V), Mod4Mask }, // dash: video.scope
+      { XKeysymToKeycode(dpy, XK_M), Mod4Mask }, // dash: music.scope
+      { XKeysymToKeycode(dpy, XK_C), Mod4Mask }, // dash: photo.scope
       { XKeysymToKeycode(dpy, XK_Escape), AnyModifier }, // cancel tab switch: super+esc, cancel keynav: esc
     };
     superkeys.assign(codes.begin(), codes.end());
@@ -497,10 +502,41 @@ private:
           }
           return true;
         }
+        else if (keysym == XK_A || keysym == XK_a
+        || keysym == XK_F || keysym == XK_f
+        || keysym == XK_V || keysym == XK_v
+        || keysym == XK_M || keysym == XK_m
+        || keysym == XK_C || keysym == XK_c)
+        {
+          const std::map<KeySym, std::string> shortcuts =
+          {
+            { XK_A, "applications.scope" },
+            { XK_a, "applications.scope" },
+            { XK_F, "files.scope" },
+            { XK_f, "files.scope" },
+            { XK_V, "video.scope" },
+            { XK_v, "video.scope" },
+            { XK_M, "music.scope" },
+            { XK_m, "music.scope" },
+            { XK_C, "photos.scope" },
+            { XK_c, "photos.scope" },
+          };
+
+          const auto it = shortcuts.find(keysym);
+          if (it != shortcuts.end())
+          {
+            const auto &scope = it->second;
+            ubus_manager.SendMessage(UBUS_PLACE_ENTRY_ACTIVATE_REQUEST,
+                                     g_variant_new("(sus)", scope.c_str(), unity::dash::GOTO_DASH_URI, ""));
+            return true;
+          }
+        }
         else if (keysym == XK_Escape)
         {
           if (launcher_controller->KeyNavIsActive())
             launcher_controller->KeyNavTerminate(false);
+
+          return true;
         }
       }
     } // KeyPress
