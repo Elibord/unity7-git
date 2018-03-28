@@ -51,12 +51,17 @@ namespace
 {
 static const std::string window_title = "Chromatic";
 static const std::string wm_class = "chromatic";
-}
+} // namespace
 
 namespace atom
 {
 Atom _XROOTPMAP_ID = 0;
-}
+Atom _NET_WORKAREA = 0;
+Atom _NET_WM_STRUT_PARTIAL = 0;
+Atom _NET_WM_WINDOW_TYPE = 0;
+Atom _NET_WM_WINDOW_TYPE_DOCK = 0;
+Atom _MOTIF_WM_HINTS = 0;
+} // namespace atom
 
 namespace unity
 {
@@ -64,7 +69,7 @@ WindowManagerPtr create_window_manager()
 {
   return WindowManagerPtr(new XWindowManager());
 }
-}
+} // namespace unity
 
 namespace
 {
@@ -83,7 +88,6 @@ nux::Color ComputeAverageWallpaperColor(Display *dpy)
   unsigned long nitems = 0, bytes_after = 0;
   unsigned char *data = nullptr;
 
-  assert(atom::_XROOTPMAP_ID != 0);
   if (XGetWindowProperty(dpy, root, atom::_XROOTPMAP_ID, 0, 1, False,
                          XA_PIXMAP, &act_type, &act_format, &nitems, &bytes_after, &data) == Success)
   {
@@ -130,10 +134,9 @@ nux::Color ComputeAverageWallpaperColor(Display *dpy)
   XDestroyImage(img);
 
   average_color = nux::Color(red, green, blue, 1.0f);
-
   return average_color;
 }
-}
+} // namespace
 
 struct StandaloneDndManager : unity::XdndManager
 {
@@ -170,8 +173,8 @@ private:
     unsigned char *data = 0;
     unsigned long nitems = 0, after = 0;
 
-    int status = XGetWindowProperty(dpy, DefaultRootWindow(dpy),
-                                    XInternAtom(dpy, "_NET_WORKAREA", False), 0, 4, False, XA_CARDINAL,
+    int status = XGetWindowProperty(dpy, DefaultRootWindow(dpy), atom::_NET_WORKAREA,
+                                    0, 4, False, XA_CARDINAL,
                                     &ret, &format, &nitems, &after, &data);
 
     long width = 0, height = 0, x = 0, y = 0;
@@ -239,8 +242,8 @@ private:
     Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
 
     // set type to dock
-    auto atom = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
-    XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False),
+    auto atom = atom::_NET_WM_WINDOW_TYPE_DOCK;
+    XChangeProperty(dpy, window_id, atom::_NET_WM_WINDOW_TYPE,
                     XA_ATOM, 32, PropModeReplace,
                     (unsigned char *)&atom, 1);
 
@@ -253,7 +256,7 @@ private:
       0x0, // inputMode
       0x0, // status
     };
-    XChangeProperty(dpy, window_id, XInternAtom(dpy, "_MOTIF_WM_HINTS", False),
+    XChangeProperty(dpy, window_id, atom::_MOTIF_WM_HINTS,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&hints_values[0], hints_values.size());
 
@@ -581,7 +584,7 @@ private:
     {
       0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     };
-    XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False),
+    XChangeProperty(dpy, window_id, atom::_NET_WM_STRUT_PARTIAL,
                     XA_CARDINAL, 32, PropModeReplace,
                     (unsigned char *)&unreserve_values[0], unreserve_values.size());
 
@@ -643,7 +646,7 @@ private:
           launcher_geom.GetPosition().x, launcher_geom.GetPosition().x + launcher_geom.GetWidth(), // bottom start x, bottom end x
         });
       }
-      XChangeProperty(dpy, window_id, XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False),
+      XChangeProperty(dpy, window_id, atom::_NET_WM_STRUT_PARTIAL,
                       XA_CARDINAL, 32, (i == 0 ? PropModeReplace : PropModeAppend),
                       (unsigned char *)&dock_values[0], dock_values.size());
     }
@@ -680,9 +683,14 @@ private:
 
   void Init()
   {
-    // setup atoms
+    // init atoms
     Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
     atom::_XROOTPMAP_ID = XInternAtom(dpy, "_XROOTPMAP_ID", False);
+    atom::_NET_WORKAREA = XInternAtom(dpy, "_NET_WORKAREA", False);
+    atom::_NET_WM_STRUT_PARTIAL = XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False);
+    atom::_NET_WM_WINDOW_TYPE = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
+    atom::_NET_WM_WINDOW_TYPE_DOCK = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
+    atom::_MOTIF_WM_HINTS = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
 
     // settings need to be setup first because it will trigger some signals and slot in other parts
     SetupSettings();
