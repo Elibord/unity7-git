@@ -39,6 +39,16 @@ Atom _NET_WM_VISIBLE_NAME = 0;
 Atom _NET_WM_STATE = 0;
 Atom XA_COMPOUND_TEXT = 0;
 Atom ONSCREEN_KEYBOARD = 0;
+Atom WM_PROTOCOLS = 0;
+Atom WM_DELETE_WINDOW = 0;
+Atom UTF8_STRING = 0;
+Atom _NET_WM_NAME = 0;
+Atom _NET_ACTIVE_WINDOW = 0;
+Atom _NET_WM_STATE_MAXIMIZED_VERT = 0;
+Atom _NET_WM_STATE_MAXIMIZED_HORZ = 0;
+Atom _NET_WM_STATE_FULLSCREEN = 0;
+Atom _NET_WM_STATE_HIDDEN = 0;
+Atom _NET_WM_MOVERESIZE = 0;
 }
 }
 
@@ -48,6 +58,16 @@ XWindowManager::XWindowManager()
   atom::_NET_WM_STATE = GetAtom("_NET_WM_STATE");
   atom::XA_COMPOUND_TEXT = GetAtom("COMPOUND_TEXT");
   atom::ONSCREEN_KEYBOARD = GetAtom("ONSCREEN_KEYBOARD");
+  atom::WM_PROTOCOLS = GetAtom("WM_PROTOCOLS");
+  atom::WM_DELETE_WINDOW = GetAtom("WM_DELETE_WINDOW");
+  atom::UTF8_STRING = GetAtom("UTF8_STRING");
+  atom::_NET_WM_NAME = GetAtom("_NET_WM_NAME");
+  atom::_NET_ACTIVE_WINDOW = GetAtom("_NET_ACTIVE_WINDOW");
+  atom::_NET_WM_STATE_MAXIMIZED_VERT = GetAtom("_NET_WM_STATE_MAXIMIZED_VERT");
+  atom::_NET_WM_STATE_MAXIMIZED_HORZ = GetAtom("_NET_WM_STATE_MAXIMIZED_HORZ");
+  atom::_NET_WM_STATE_FULLSCREEN = GetAtom("_NET_WM_STATE_FULLSCREEN");
+  atom::_NET_WM_STATE_HIDDEN = GetAtom("_NET_WM_STATE_HIDDEN");
+  atom::_NET_WM_MOVERESIZE = GetAtom("_NET_WM_MOVERESIZE");
 }
 
 Display* XWindowManager::GetDisplay() const
@@ -91,7 +111,7 @@ std::string XWindowManager::GetStringProperty(Window window_id, Atom atom) const
     return std::string();
   }
 
-  if (type != XA_STRING && type != atom::XA_COMPOUND_TEXT && type != GetAtom("UTF8_STRING", false))
+  if (type != XA_STRING && type != atom::XA_COMPOUND_TEXT && type != atom::UTF8_STRING)
   {
     LOG_ERROR(logger) << "Impossible to get the property " << gdk_x11_get_xatom_name(atom)
                       << " for window " << window_id << ": invalid string type: "
@@ -176,7 +196,7 @@ std::string XWindowManager::GetWindowName(Window window_id) const
   if (!name.empty())
     return name;
 
-  name = GetStringProperty(window_id, GetAtom("_NET_WM_NAME"));
+  name = GetStringProperty(window_id, atom::_NET_WM_NAME);
 
   if (!name.empty())
     return name;
@@ -199,7 +219,7 @@ Window XWindowManager::GetActiveWindow() const
   auto *dpy = GetDisplay();
   Window root_window = DefaultRootWindow(dpy);
 
-  const auto active_window = GetWindowPropertyByAtom(root_window, GetAtom("_NET_ACTIVE_WINDOW"));
+  const auto active_window = GetWindowPropertyByAtom(root_window, atom::_NET_ACTIVE_WINDOW);
   if (active_window < 0)
     return 0;
 
@@ -226,8 +246,8 @@ bool XWindowManager::IsTopWindowFullscreenOnMonitorWithMouse() const
 bool XWindowManager::IsWindowMaximized(Window window_id) const
 {
   const auto atoms = GetWindowAtomsByAtom(window_id, atom::_NET_WM_STATE);
-  const auto it_vert = std::find(atoms.begin(), atoms.end(), GetAtom("_NET_WM_STATE_MAXIMIZED_VERT"));
-  const auto it_horz = std::find(atoms.begin(), atoms.end(), GetAtom("_NET_WM_STATE_MAXIMIZED_HORZ"));
+  const auto it_vert = std::find(atoms.begin(), atoms.end(), atom::_NET_WM_STATE_MAXIMIZED_VERT);
+  const auto it_horz = std::find(atoms.begin(), atoms.end(), atom::_NET_WM_STATE_MAXIMIZED_HORZ);
 
   return (it_vert != atoms.end() && it_horz != atoms.end());
 }
@@ -235,7 +255,7 @@ bool XWindowManager::IsWindowMaximized(Window window_id) const
 bool XWindowManager::IsWindowVerticallyMaximized(Window window_id) const
 {
   const auto atoms = GetWindowAtomsByAtom(window_id, atom::_NET_WM_STATE);
-  const auto it = std::find(atoms.begin(), atoms.end(), GetAtom("_NET_WM_STATE_MAXIMIZED_VERT"));
+  const auto it = std::find(atoms.begin(), atoms.end(), atom::_NET_WM_STATE_MAXIMIZED_VERT);
 
   return (it != atoms.end());
 }
@@ -243,7 +263,7 @@ bool XWindowManager::IsWindowVerticallyMaximized(Window window_id) const
 bool XWindowManager::IsWindowHorizontallyMaximized(Window window_id) const
 {
   const auto atoms = GetWindowAtomsByAtom(window_id, atom::_NET_WM_STATE);
-  const auto it = std::find(atoms.begin(), atoms.end(), GetAtom("_NET_WM_STATE_MAXIMIZED_HORZ"));
+  const auto it = std::find(atoms.begin(), atoms.end(), atom::_NET_WM_STATE_MAXIMIZED_HORZ);
 
   return (it != atoms.end());
 }
@@ -251,7 +271,7 @@ bool XWindowManager::IsWindowHorizontallyMaximized(Window window_id) const
 bool XWindowManager::IsWindowFullscreen(Window window_id) const
 {
   const auto atoms = GetWindowAtomsByAtom(window_id, atom::_NET_WM_STATE);
-  const auto it = std::find(atoms.begin(), atoms.end(), GetAtom("_NET_WM_STATE_FULLSCREEN"));
+  const auto it = std::find(atoms.begin(), atoms.end(), atom::_NET_WM_STATE_FULLSCREEN);
 
   return (it != atoms.end());
 }
@@ -307,7 +327,7 @@ bool XWindowManager::IsWindowClosable(Window window_id) const
 bool XWindowManager::IsWindowMinimized(Window window_id) const
 {
   const auto atoms = GetWindowAtomsByAtom(window_id, atom::_NET_WM_STATE);
-  const auto it = std::find(atoms.begin(), atoms.end(), GetAtom("_NET_WM_STATE_HIDDEN"));
+  const auto it = std::find(atoms.begin(), atoms.end(), atom::_NET_WM_STATE_HIDDEN);
 
   return (it != atoms.end());
 }
@@ -349,22 +369,24 @@ void XWindowManager::ShowActionMenu(Time, Window, unsigned button, nux::Point co
 void XWindowManager::Maximize(Window window_id)
 {
   // https://standards.freedesktop.org/wm-spec/wm-spec-1.3.html#idm140130317598336
-  SetWindowState(window_id, _NET_WM_STATE_ADD, GetAtom("_NET_WM_STATE_MAXIMIZED_VERT"), GetAtom("_NET_WM_STATE_MAXIMIZED_HORZ"));
+  SetWindowState(window_id, _NET_WM_STATE_ADD,
+                 atom::_NET_WM_STATE_MAXIMIZED_VERT, atom::_NET_WM_STATE_MAXIMIZED_HORZ);
 }
 
 void XWindowManager::VerticallyMaximize(Window window_id)
 {
-  SetWindowState(window_id, _NET_WM_STATE_ADD, GetAtom("_NET_WM_STATE_MAXIMIZED_VERT"), 0);
+  SetWindowState(window_id, _NET_WM_STATE_ADD, atom::_NET_WM_STATE_MAXIMIZED_VERT, 0);
 }
 
 void XWindowManager::HorizontallyMaximize(Window window_id)
 {
-  SetWindowState(window_id, _NET_WM_STATE_ADD, GetAtom("_NET_WM_STATE_MAXIMIZED_HORZ"), 0);
+  SetWindowState(window_id, _NET_WM_STATE_ADD, atom::_NET_WM_STATE_MAXIMIZED_HORZ, 0);
 }
 
 void XWindowManager::Restore(Window window_id)
 {
-  SetWindowState(window_id, _NET_WM_STATE_REMOVE, GetAtom("_NET_WM_STATE_MAXIMIZED_VERT"), GetAtom("_NET_WM_STATE_MAXIMIZED_HORZ"));
+  SetWindowState(window_id, _NET_WM_STATE_REMOVE,
+                 atom::_NET_WM_STATE_MAXIMIZED_VERT, atom::_NET_WM_STATE_MAXIMIZED_HORZ);
 }
 
 void XWindowManager::RestoreAt(Window window_id, int x, int y)
@@ -377,12 +399,12 @@ void XWindowManager::RestoreAt(Window window_id, int x, int y)
 
 void XWindowManager::Minimize(Window window_id)
 {
-  SetWindowState(window_id, _NET_WM_STATE_ADD, GetAtom("_NET_WM_STATE_HIDDEN"), 0);
+  SetWindowState(window_id, _NET_WM_STATE_ADD, atom::_NET_WM_STATE_HIDDEN, 0);
 }
 
 void XWindowManager::UnMinimize(Window window_id)
 {
-  SetWindowState(window_id, _NET_WM_STATE_REMOVE, GetAtom("_NET_WM_STATE_HIDDEN"), 0);
+  SetWindowState(window_id, _NET_WM_STATE_REMOVE, atom::_NET_WM_STATE_HIDDEN, 0);
 }
 
 void XWindowManager::Shade(Window window_id)
@@ -402,9 +424,9 @@ void XWindowManager::Close(Window window_id)
   XEvent ev;
   ev.type                 = ClientMessage;
   ev.xclient.window       = window_id;
-  ev.xclient.message_type = GetAtom("WM_PROTOCOLS"); // XXX: probably suboptimal to call XInternAtom() every time
+  ev.xclient.message_type = atom::WM_PROTOCOLS;
   ev.xclient.format       = 32;
-  ev.xclient.data.l[0]    = GetAtom("WM_DELETE_WINDOW");
+  ev.xclient.data.l[0]    = atom::WM_DELETE_WINDOW;
   ev.xclient.data.l[1]    = CurrentTime;
   ev.xclient.data.l[2]    = 0;
   ev.xclient.data.l[3]    = 0;
@@ -423,7 +445,7 @@ void XWindowManager::Activate(Window window_id)
   ev.xclient.send_event = True;
   ev.xclient.display = dpy;
   ev.xclient.window = window_id;
-  ev.xclient.message_type = GetAtom("_NET_ACTIVE_WINDOW");
+  ev.xclient.message_type = atom::_NET_ACTIVE_WINDOW;
   ev.xclient.format = 32;
   ev.xclient.data.l[0] = 1; // CLIENT_TYPE_APPLICATION // https://specifications.freedesktop.org/wm-spec/1.3/ar01s03.html
   ev.xclient.data.l[1] = CurrentTime;
@@ -589,7 +611,7 @@ void XWindowManager::StartMove(Window window_id, int x, int y)
   ev.xclient.send_event = true;
 
   ev.xclient.window     = window_id;
-  ev.xclient.message_type = GetAtom("_NET_WM_MOVERESIZE");
+  ev.xclient.message_type = atom::_NET_WM_MOVERESIZE;
   ev.xclient.format     = 32;
 
   ev.xclient.data.l[0] = x; // x_root

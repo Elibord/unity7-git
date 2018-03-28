@@ -51,7 +51,6 @@ namespace
 {
 static const std::string window_title = "Chromatic";
 static const std::string wm_class = "chromatic";
-} // namespace
 
 namespace atom
 {
@@ -62,6 +61,7 @@ Atom _NET_WM_WINDOW_TYPE = 0;
 Atom _NET_WM_WINDOW_TYPE_DOCK = 0;
 Atom _MOTIF_WM_HINTS = 0;
 } // namespace atom
+} // namespace
 
 namespace unity
 {
