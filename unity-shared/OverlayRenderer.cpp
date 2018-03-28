@@ -602,8 +602,7 @@ void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry c
   {
     auto color = bg_layer_->GetColor();
     // opaque color for low_gfx
-    if (Settings::Instance().is_standalone() && !Settings::Instance().low_gfx())
-      color.alpha = 0.8; // no setting for standalone color transparency // XXX: should probably use opacity from launcher
+    color.alpha = (Settings::Instance().low_gfx() ? 1.0 : 0.8); // no setting for standalone color transparency // FIXME: should probably use opacity from launcher
     nux::GetPainter().Paint2DQuadColor(gfx_context, larger_content_geo, color);
   }
 
