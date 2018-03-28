@@ -18,15 +18,16 @@
  *
  */
 
-#include <thread>
+#include <getopt.h>
+#include <gtk/gtk.h>
 #include <X11/extensions/shape.h>
 #include <X11/XKBlib.h>
+#include <thread>
 
 #include <Nux/Nux.h>
 #include <Nux/NuxTimerTickSource.h>
 #include <NuxCore/AnimationController.h>
 #include <NuxCore/Logger.h>
-#include <gtk/gtk.h>
 
 #include "unity-shared/BGHash.h"
 #include "unity-shared/DashStyle.h"
@@ -38,14 +39,12 @@
 #include "unity-shared/UnitySettings.h"
 #include "unity-shared/UScreen.h"
 #include "unity-shared/XWindowManager.h"
-#include "dash/ApplicationStarterImp.h"
+// #include "dash/ApplicationStarterImp.h"
 #include "dash/DashController.h"
 #include "EdgeBarrierController.h"
 #include "FavoriteStoreGSettings.h"
 #include "LauncherController.h"
 #include "Launcher.h"
-
-#include <UnityCore/GSettingsScopes.h>
 
 namespace
 {
@@ -61,6 +60,14 @@ Atom _NET_WM_WINDOW_TYPE = 0;
 Atom _NET_WM_WINDOW_TYPE_DOCK = 0;
 Atom _MOTIF_WM_HINTS = 0;
 } // namespace atom
+
+struct options_t
+{
+  int lowgfx = 0;
+  int bottom = 0;
+  int netbook = 0;
+} options;
+
 } // namespace
 
 namespace unity
@@ -195,10 +202,10 @@ private:
   void SetupSettings()
   {
     auto &settings = unity::Settings::Instance();
-    settings.form_factor = unity::FormFactor::DESKTOP;
-    settings.launcher_position = unity::LauncherPosition::LEFT;
     settings.is_standalone = true;
-    // settings.low_gfx = true;
+    settings.form_factor = (options.netbook ? unity::FormFactor::NETBOOK : unity::FormFactor::DESKTOP);
+    settings.launcher_position = (options.bottom ? unity::LauncherPosition::BOTTOM : unity::LauncherPosition::LEFT);
+    settings.low_gfx = options.lowgfx;
   }
 
   void SetupPanel()
@@ -769,9 +776,50 @@ private:
   std::vector<sigc::connection> launcher_slots;
 };
 
+void print_help()
+{
+  std::cout
+    << "  --help, -h      this help screen" << std::endl
+    << "  --lowgfx        enable low gfx mode" << std::endl
+    << "  --bottom        position launcher at bottom" << std::endl
+    << "  --netbook       netbook form-factor (dash)" << std::endl
+    ;
+}
+
 int main(int argc, char **argv)
 {
-  gtk_init(&argc, &argv);
+  int c = 0;
+  while (true)
+  {
+    static struct option long_options[] =
+    {
+      { "lowgfx",  no_argument, &options.lowgfx,  1 },
+      { "bottom",  no_argument, &options.bottom,  1 },
+      { "netbook", no_argument, &options.netbook, 1 },
+      { "help",    no_argument, 0, 'h'},
+      { 0, 0, 0, 0 },
+    };
+
+    int option_index = 0;
+    c = getopt_long(argc, argv, "h", long_options, &option_index);
+
+    if (c < 0)
+      break;
+
+    switch (c)
+    {
+    case 0:
+      if (long_options[option_index].flag != 0)
+        break;
+    case 'h':
+      print_help();
+      exit(1);
+    default:
+      abort();
+    }
+  }
+
+  gtk_init(nullptr, nullptr);
   nux::NuxInitialize(nullptr);
 
   nux::logging::configure_logging(::getenv("UNITY_LOG_SEVERITY"));
