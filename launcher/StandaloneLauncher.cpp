@@ -380,7 +380,7 @@ private:
       { XKeysymToKeycode(dpy, XK_T), Mod4Mask }, // trash: super+t
       { XKeysymToKeycode(dpy, XK_F1), Mod4Mask }, // keynav: super+f1
       { XKeysymToKeycode(dpy, XK_Tab), Mod4Mask }, // tab switch: super+tab
-      { XKeysymToKeycode(dpy, XK_Escape), Mod4Mask }, // cancel tab switch: super+esc
+      { XKeysymToKeycode(dpy, XK_Escape), AnyModifier }, // cancel tab switch: super+esc, cancel keynav: esc
     };
     superkeys.assign(codes.begin(), codes.end());
 
@@ -475,8 +475,7 @@ private:
 
         // this is only launcher keys + trash
         if ((keysym >= XK_0 && keysym <= XK_9)
-        || keysym == XK_t || keysym == XK_T
-        || keysym == XK_Escape)
+        || keysym == XK_t || keysym == XK_T)
         {
           launcher_controller->HandleLauncherKeyEvent(XModifiersToNux(event.xkey.state), keysym, event.xkey.time);
           return true;
@@ -497,6 +496,11 @@ private:
             launcher_controller->KeyNavActivate();
           }
           return true;
+        }
+        else if (keysym == XK_Escape)
+        {
+          if (launcher_controller->KeyNavIsActive())
+            launcher_controller->KeyNavTerminate(false);
         }
       }
     } // KeyPress
@@ -708,11 +712,6 @@ private:
     SetupScreens();
     SetupShortcuts();
 
-    // WindowManager::Default().average_color = nux::Color(71.0f/255, 128.0f/255, 97.0f/255); // void
-    // WindowManager::Default().average_color = nux::Color(0.0f/255, 128.0f/255, 0.0f/255); // emerald
-    // WindowManager::Default().average_color = nux::Color(0.0f/255, 0.0f/255, 64.0f/255); // sapphire
-    // WindowManager::Default().average_color = nux::Color(0.0f/255, 64.0f/255, 64.0f/255); // teal
-    // WindowManager::Default().average_color = nux::Color(0.0f, 1.0f/255, 1.0f/255); // dark teal
     unity::WindowManager::Default().average_color = nux::Color(0.71f/255, 1.28f/255, 0.97f/255); // dark void
   }
 
