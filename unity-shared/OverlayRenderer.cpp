@@ -590,7 +590,7 @@ void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry c
   // apply the darkening
   // to preserve old behavior, don't apply darken in low_gfx
   // instead bg_layer is need to be used in that mode
-  if (!Settings::Instance().low_gfx())
+  if (!settings.low_gfx())
   {
     gfx_context.GetRenderStates().SetBlend(true, GL_ZERO, GL_SRC_COLOR);
     bg_darken_layer_->SetGeometry(larger_content_geo);
@@ -598,11 +598,12 @@ void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry c
     gfx_context.GetRenderStates().SetBlend(alpha, src, dest);
   }
 
-  if (Settings::Instance().low_gfx() || Settings::Instance().is_standalone())
+  // draw background color
+  if (settings.low_gfx() || settings.is_standalone())
   {
     auto color = bg_layer_->GetColor();
     // opaque color for low_gfx
-    color.alpha = (Settings::Instance().low_gfx() ? 1.0 : 0.8); // no setting for standalone color transparency // FIXME: should probably use opacity from launcher
+    color.alpha = (settings.low_gfx() ? 1.0 : 0.8); // no setting for standalone color transparency // FIXME: should probably use opacity from launcher
     nux::GetPainter().Paint2DQuadColor(gfx_context, larger_content_geo, color);
   }
 
@@ -612,7 +613,7 @@ void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry c
     // XXX: this check skips bg draw when bg effect helper is enabled
     // which is normally true for OverlayRenderer,
     // but not in the case of standalone dash
-    if (!gfx_context.UsingGLSLCodePath() && !Settings::Instance().is_standalone()) // standalone draw will be done elsewhere
+    if (!gfx_context.UsingGLSLCodePath() && !settings.is_standalone()) // standalone bg draw will be done elsewhere
     {
       bg_layer_->SetGeometry(larger_content_geo);
       nux::GetPainter().RenderSinglePaintLayer(gfx_context, larger_content_geo, bg_layer_.get());
@@ -803,10 +804,10 @@ void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry c
         if (dash_position == OverlayPosition::BOTTOM)
           left_corner_y = geo.y - left_corner_size.height + top_corner_offset;
 
-	      /* XXX: why it skips this if dash position is BOTTOM?
+        /* XXX: why it skips this if dash position is BOTTOM?
         if (dash_position == OverlayPosition::LEFT)
         {
-	      */
+        */
           // Selectively erase blur region in the curbe
           gfx_context.QRP_ColorModTexAlpha(geo.x - left_corner_offset,
                                            left_corner_y,
@@ -827,9 +828,9 @@ void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry c
                                left_corner_mask->GetDeviceTexture(),
                                texxform,
                                nux::color::White);
-	      /*
+        /*
         }
-      	*/
+        */
 
         gfx_context.GetRenderStates().SetBlend(true);
         gfx_context.GetRenderStates().SetPremultipliedBlend(nux::SRC_OVER);
@@ -1186,7 +1187,15 @@ void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry c
     gfx_context.PopClippingRectangle();
   }
 
-  gfx_context.GetRenderStates().SetBlend(alpha, src, dest);
+  // gfx_context.GetRenderStates().SetBlend(alpha, src, dest);
+  // FIXME: this is not good. blend function is need to be set to
+  // this very specific state otherwise rendering is bugging out when
+  // in NETBOOK layout. perhaps lend function wasn't set correctly
+  // in the beginning. also this is blend state when borders
+  // rendering is finished (in !NETBOOK layout)
+  gfx_context.GetRenderStates().SetPremultipliedBlend(nux::SRC_OVER);
+  gfx_context.GetRenderStates().SetColorMask(true, true, true, true);
+  gfx_context.GetRenderStates().SetBlend(false);
 }
 
 /* XXX: huh?
