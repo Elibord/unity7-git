@@ -18,7 +18,10 @@
  *
  */
 
+#include "config.h"
+
 #include <getopt.h>
+#include <glib/gi18n-lib.h>
 #include <gtk/gtk.h>
 #include <X11/extensions/shape.h>
 #include <X11/XKBlib.h>
@@ -39,8 +42,10 @@
 #include "unity-shared/UnitySettings.h"
 #include "unity-shared/UScreen.h"
 #include "unity-shared/XWindowManager.h"
-// #include "dash/ApplicationStarterImp.h"
 #include "dash/DashController.h"
+#include "shortcuts/BaseWindowRaiserImp.h"
+#include "shortcuts/ShortcutController.h"
+#include "shortcuts/MockShortcutHint.h"
 #include "EdgeBarrierController.h"
 #include "FavoriteStoreGSettings.h"
 #include "LauncherController.h"
@@ -148,6 +153,35 @@ nux::Color ComputeAverageWallpaperColor(Display *dpy)
 struct StandaloneDndManager : unity::XdndManager
 {
   int Monitor() const { return 0; }
+};
+
+class ShortcutsModeller : public unity::shortcut::AbstractModeller
+{
+public:
+  ShortcutsModeller()
+  {
+    std::list<unity::shortcut::AbstractHint::Ptr> hints;
+
+    const std::string super = _("Super");
+    const std::string launcher(_("Launcher"));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      launcher, "", _(" (Hold)"), // category, prefix, postfix
+      _("Opens the Launcher, displays shortcuts."), // description
+      unity::shortcut::OptionType::HARDCODED, // "template"
+      super))); // arg1, arg2, arg3
+
+    model = std::make_shared<unity::shortcut::Model>(hints);
+    model_changed.emit(model);
+  }
+
+  unity::shortcut::Model::Ptr GetCurrentModel() const override
+  {
+    return model;
+  }
+
+private:
+  unity::shortcut::Model::Ptr model;
 };
 
 struct LauncherWindow
@@ -472,6 +506,8 @@ private:
       {
         GrabSuperkeys();
 
+        shortcuts_controller->Show(); // shorcut controller will start show timer internally
+
         if (launcher_controller->KeyNavIsActive())
           launcher_controller->KeyNavTerminate(false);
 
@@ -554,6 +590,8 @@ private:
       if (event.xkey.keycode == code_super_l || event.xkey.keycode == code_super_r)
       {
         UngrabSuperkeys();
+
+        shortcuts_controller->Hide();
 
         const bool was_tap = launcher_controller->AboutToShowDash(true, when);
         launcher_controller->HandleLauncherKeyRelease(was_tap, when);
@@ -749,6 +787,10 @@ private:
       std::make_shared<StandaloneDndManager>(),
       std::make_shared<unity::ui::EdgeBarrierController>()));
     dash_controller.reset(new unity::dash::Controller());
+    shortcuts_controller.reset(new unity::shortcut::Controller(
+      std::make_shared<unity::shortcut::BaseWindowRaiserImp>(),
+      std::make_shared<ShortcutsModeller>()
+    ));
 
     SetupUBusInterests();
     SetupWindow();
@@ -758,19 +800,20 @@ private:
     unity::WindowManager::Default().average_color = nux::Color(0.71f/255, 1.28f/255, 0.97f/255); // dark void
   }
 
+  unity::input::Monitor im; // crashes w/o it
   unity::internal::FavoriteStoreGSettings favorite_store; // XXX: segfaults w/o this
   unity::Settings settings;
   unity::FontSettings font_settings;
-  unity::panel::Style panel_style;
   unity::ThumbnailGenerator thumb_generator;
-  unity::dash::Style dash_style;
-  nux::NuxTimerTickSource tick_source;
-  nux::animation::AnimationController animation_controller;
-  unity::launcher::Controller::Ptr launcher_controller;
-  unity::input::Monitor im;
-  unity::dash::Controller::Ptr dash_controller;
   unity::UBusManager ubus_manager;
   unity::BGHash bghash; // will attempt to call XWindowManager, need to be called after window is created
+  nux::NuxTimerTickSource tick_source;
+  nux::animation::AnimationController animation_controller;
+  unity::panel::Style panel_style;
+  unity::launcher::Controller::Ptr launcher_controller;
+  unity::dash::Style dash_style;
+  unity::dash::Controller::Ptr dash_controller;
+  unity::shortcut::Controller::Ptr shortcuts_controller;
   //
   std::vector<std::pair<KeyCode, unsigned> > superkeys;
   std::vector<sigc::connection> launcher_slots;
