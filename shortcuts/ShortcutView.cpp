@@ -211,16 +211,30 @@ nux::Geometry View::GetBackgroundGeometry()
 
 void View::DrawOverlay(nux::GraphicsEngine& GfxContext, bool force_draw, nux::Geometry const& clip)
 {
-  auto &settings = Settings::Instance();
+  const auto &settings = Settings::Instance();
 
-  // FIXME: just a workaround. this isn't quite right, there are glitches on corners
+  // FIXME: just a workaround. this isn't quite right, there are glitches at corners
   // reference to proper overlay renderer: OverlayRenderer.cpp
   if (settings.low_gfx() || settings.is_standalone())
   {
-    auto color = background_color();
-    if (settings.low_gfx())
-      color.alpha = 1.0;
+    auto color = background_color(); // View's background color, set by controller
+    color.alpha = (settings.low_gfx() ? 1.0 : settings.background_alpha());
     nux::GetPainter().Paint2DQuadColor(GfxContext, GetGeometry(), color);
+  }
+
+  // apply darkening
+  if (!settings.low_gfx() && settings.is_standalone())
+  {
+    const auto bg_color = background_color();
+
+    unsigned int alpha = 0, src = 0, dest = 0;
+    GfxContext.GetRenderStates().GetBlend(alpha, src, dest);
+    GfxContext.GetRenderStates().SetBlend(true, GL_ZERO, GL_SRC_COLOR);
+
+    const nux::Color darken_color = nux::Color(bg_color.red, bg_color.green, bg_color.blue, 1.0f);
+    nux::GetPainter().Paint2DQuadColor(GfxContext, GetGeometry(), darken_color);
+
+    GfxContext.GetRenderStates().SetBlend (alpha, src, dest);
   }
 
   view_layout_->ProcessDraw(GfxContext, force_draw);

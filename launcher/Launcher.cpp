@@ -2023,6 +2023,18 @@ void Launcher::DrawContent(nux::GraphicsEngine& GfxContext, bool force_draw)
       nux::Color color = options()->background_color;
       color.alpha = options()->background_alpha;
       gPainter.Paint2DQuadColor(GfxContext, bkg_box, color);
+
+      // apply darken if overlay is open (standalone mode)
+      if (Settings::Instance().is_standalone() && IsOverlayOpen())
+      {
+        unsigned int alpha = 0, src = 0, dest = 0;
+        GfxContext.GetRenderStates().GetBlend(alpha, src, dest);
+        GfxContext.GetRenderStates().SetBlend(true, GL_ZERO, GL_SRC_COLOR);
+
+        const nux::Color darken_color = nux::Color(color.red, color.green, color.blue, 1.0f);
+        gPainter.Paint2DQuadColor(GfxContext, bkg_box, darken_color);
+        GfxContext.GetRenderStates().SetBlend(alpha, src, dest);
+      }
     }
   }
   else
