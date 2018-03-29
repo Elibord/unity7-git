@@ -27,6 +27,7 @@
 
 #include "unity-shared/LineSeparator.h"
 #include "unity-shared/StaticCairoText.h"
+#include "unity-shared/UnitySettings.h"
 
 namespace unity
 {
@@ -210,6 +211,18 @@ nux::Geometry View::GetBackgroundGeometry()
 
 void View::DrawOverlay(nux::GraphicsEngine& GfxContext, bool force_draw, nux::Geometry const& clip)
 {
+  auto &settings = Settings::Instance();
+
+  // FIXME: just a workaround. this isn't quite right, there are glitches on corners
+  // reference to proper overlay renderer: OverlayRenderer.cpp
+  if (settings.low_gfx() || settings.is_standalone())
+  {
+    auto color = background_color();
+    if (settings.low_gfx())
+      color.alpha = 1.0;
+    nux::GetPainter().Paint2DQuadColor(GfxContext, GetGeometry(), color);
+  }
+
   view_layout_->ProcessDraw(GfxContext, force_draw);
 }
 
