@@ -538,6 +538,7 @@ public:
 Settings::Settings()
   : supports_3d(glib::gchar_to_string(getenv("UNITY_HAS_3D_SUPPORT")) != "false")
   , is_standalone(false)
+  , background_alpha(0.6667)
   , pimpl(new Impl(this))
 {
   if (settings_instance)

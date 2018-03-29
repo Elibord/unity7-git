@@ -75,6 +75,7 @@ public:
   nux::Property<bool> gestures_launcher_drag;
   nux::Property<bool> gestures_dash_tap;
   nux::Property<bool> gestures_windows_drag_pinch;
+  nux::Property<float> background_alpha; // XXX: copy from LauncherOptions::background_alpha for standalone mode
 
   sigc::signal<void> dpi_changed;
   sigc::signal<void> gestures_changed;
