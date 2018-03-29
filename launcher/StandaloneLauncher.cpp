@@ -72,6 +72,7 @@ struct options_t
   int lowgfx = 0;
   int bottom = 0;
   int netbook = 0;
+  float alpha = 0.6667;
 } options;
 
 } // namespace
@@ -886,12 +887,15 @@ private:
       std::make_shared<ShortcutsModeller>()
     ));
 
+    launcher_controller->options()->background_alpha.changed.connect([this] (float alpha) {
+      settings.background_alpha = alpha;
+    });
+    launcher_controller->options()->background_alpha = options.alpha;
+
     SetupUBusInterests();
     SetupWindow();
     SetupScreens();
     SetupShortcuts();
-
-    unity::WindowManager::Default().average_color = nux::Color(0.71f/255, 1.28f/255, 0.97f/255); // dark void
   }
 
   unity::input::Monitor im; // crashes w/o it
@@ -917,6 +921,7 @@ void print_help()
 {
   std::cout
     << "  --help, -h      this help screen" << std::endl
+    << "  --opacity, -o   laucher/dash opacity" << std::endl
     << "  --lowgfx        enable low gfx mode" << std::endl
     << "  --bottom        position launcher at bottom" << std::endl
     << "  --netbook       netbook form-factor (dash)" << std::endl
@@ -933,12 +938,13 @@ int main(int argc, char **argv)
       { "lowgfx",  no_argument, &options.lowgfx,  1 },
       { "bottom",  no_argument, &options.bottom,  1 },
       { "netbook", no_argument, &options.netbook, 1 },
+      { "opacity", required_argument, 0, 'o'},
       { "help",    no_argument, 0, 'h'},
       { 0, 0, 0, 0 },
     };
 
     int option_index = 0;
-    c = getopt_long(argc, argv, "h", long_options, &option_index);
+    c = getopt_long(argc, argv, "ho:", long_options, &option_index);
 
     if (c < 0)
       break;
@@ -948,6 +954,14 @@ int main(int argc, char **argv)
     case 0:
       if (long_options[option_index].flag != 0)
         break;
+    case 'o':
+      {
+        std::stringstream ss(optarg);
+        ss.imbue(std::locale::classic());
+        ss >> options.alpha;
+        options.alpha = std::min(1.0f, std::max(0.0f, options.alpha));
+      }
+      break;
     case 'h':
       print_help();
       exit(1);
