@@ -171,6 +171,85 @@ public:
       unity::shortcut::OptionType::HARDCODED, // "template"
       super))); // arg1, arg2, arg3
 
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      launcher, "", " + F1",
+      _("Opens Launcher keyboard navigation mode."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      launcher, "", " + Tab",
+      _("Switches applications via the Launcher."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      launcher, "", " + 1 to 9",
+      _("Same as clicking on a Launcher icon."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      launcher, "", " + T",
+      _("Opens the Trash."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    const std::string dash(_("Dash"));
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      dash, "", _(" (Tap)"), // category, prefix, postfix
+      _("Opens the Dash Home."), // description
+      unity::shortcut::OptionType::HARDCODED, // "template"
+      super))); // arg1, arg2, arg3
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      dash, "", " + A",
+      _("Opens the Dash App Lens."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      dash, "", " + F",
+      _("Opens the Dash Files Lens."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      dash, "", " + M",
+      _("Opens the Dash Music Lens."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      dash, "", " + C",
+      _("Opens the Dash Photo Lens."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      dash, "", " + V",
+      _("Opens the Dash Video Lens."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      dash, "", "",
+      _("Switches between Lenses."),
+      unity::shortcut::OptionType::HARDCODED,
+      "Ctrl + Tab")));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      dash, "", "",
+      _("Moves the focus."),
+      unity::shortcut::OptionType::HARDCODED,
+      _("Arrow Keys"))));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      dash, "", "",
+      _("Opens the currently focused item."),
+      unity::shortcut::OptionType::HARDCODED,
+      _("Enter"))));
+
     model = std::make_shared<unity::shortcut::Model>(hints);
     model_changed.emit(model);
   }
