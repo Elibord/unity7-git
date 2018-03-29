@@ -748,13 +748,7 @@ void DashView::DrawContent(nux::GraphicsEngine& graphics_engine, bool force_draw
   renderer_geo.height += renderer_y_offset;
 
   // clear before drawing
-  nux::ROPConfig ROP;
-  ROP.Blend = !Settings::Instance().is_standalone();
-  ROP.SrcBlend = GL_ONE;
-  ROP.DstBlend = GL_ONE_MINUS_SRC_ALPHA;
-  nux::GetPainter().PushDrawColorLayer(graphics_engine, renderer_geo, nux::color::Transparent, true, ROP);
-  nux::GetPainter().PaintActivePaintLayerStack(graphics_engine, renderer_geo);
-
+  nux::GetPainter().Paint2DQuadColor(graphics_engine, renderer_geo, nux::color::Transparent);
 
   /*
   nux::Geometry const& geo_layout(layout_->GetGeometry());
@@ -762,6 +756,7 @@ void DashView::DrawContent(nux::GraphicsEngine& graphics_engine, bool force_draw
   // See lp bug: 1125346 (The sharp white line between dash and launcher is missing)
   // XXX: perhaps root cause of this bug was double draw and different code in DrawFull and DrawInner
   // although it must be said that it's not clear which version of draw rendered line correctly
+  // or maybe delimiter line was draw too early (before bg draw)
   nux::Geometry clip_geo = geo_layout;
   clip_geo.x += 1;
   if (Settings::Instance().launcher_position() == LauncherPosition::BOTTOM)
@@ -772,6 +767,10 @@ void DashView::DrawContent(nux::GraphicsEngine& graphics_engine, bool force_draw
 
   // renderer_.DrawInner(graphics_engine, content_geo_, renderer_geo_abs, renderer_geo);
   renderer_.DrawFull(graphics_engine, content_geo_, renderer_geo_abs, renderer_geo, false);
+
+  graphics_engine.GetRenderStates().SetPremultipliedBlend(nux::SRC_OVER);
+  graphics_engine.GetRenderStates().SetColorMask(true, true, true, true);
+  graphics_engine.GetRenderStates().SetBlend(false);
 
   /*
   if (IsFullRedraw())

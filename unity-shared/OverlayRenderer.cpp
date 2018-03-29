@@ -504,6 +504,9 @@ void OverlayRenderer::UpdateBlurBackgroundSize(nux::Geometry const& content_geo,
 
 void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry const& content_geo, nux::Geometry const& absolute_geo, nux::Geometry const& geometry, bool force_edges)
 {
+  unsigned int alpha = 0, src = 0, dest = 0;
+  gfx_context.GetRenderStates().GetBlend(alpha, src, dest);
+
   nux::Geometry geo(content_geo);
   double scale = parent->scale;
 
@@ -563,14 +566,45 @@ void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry c
   dash::Style& style = dash::Style::Instance();
   auto& settings = Settings::Instance();
 
-  unsigned int alpha = 0, src = 0, dest = 0;
-  gfx_context.GetRenderStates().GetBlend(alpha, src, dest);
+  // apply the darkening
+  // to preserve old behavior, don't apply darken in low_gfx
+  // instead bg_layer is need to be used in that mode
+  if (!settings.low_gfx() && !settings.is_standalone())
+  {
+    gfx_context.GetRenderStates().SetBlend(true, GL_ZERO, GL_SRC_COLOR);
+    bg_darken_layer_->SetGeometry(larger_content_geo);
+    nux::GetPainter().RenderSinglePaintLayer(gfx_context, larger_content_geo, bg_darken_layer_.get());
+    gfx_context.GetRenderStates().SetBlend(alpha, src, dest);
+  }
+
+  // draw background color
+  if (settings.low_gfx() || settings.is_standalone())
+  {
+    auto color = bg_layer_->GetColor();
+    // for this to blend seamlessly with launcher, it has to be color with the same opacity
+    color.alpha = (settings.low_gfx() ? 1.0 : settings.background_alpha());
+    nux::GetPainter().Paint2DQuadColor(gfx_context, larger_content_geo, color);
+  }
+
+  // apply darkening (standalone mode)
+  // XXX: for some reason darkening above doesn't work in standalone mode, maybe it relies on effect helper idk
+  // apply another variant under standalone condition not to break upstream Unity
+  if (!settings.low_gfx() && settings.is_standalone())
+  {
+    const auto bg_color = bg_layer_->GetColor();
+    const auto darken_color = nux::Color(bg_color.red, bg_color.green, bg_color.blue, 1.0f);
+
+    gfx_context.GetRenderStates().SetBlend(true, GL_ZERO, GL_SRC_COLOR);
+    nux::GetPainter().Paint2DQuadColor(gfx_context, larger_content_geo, darken_color);
+    gfx_context.GetRenderStates().SetBlend(alpha, src, dest);
+  }
 
   gfx_context.GetRenderStates().SetColorMask(true, true, true, true);
   gfx_context.GetRenderStates().SetBlend(true);
   gfx_context.GetRenderStates().SetPremultipliedBlend(nux::SRC_OVER);
 
   // Vertical lancher/dash separator
+  // this has to be done after bg paint
   nux::GetPainter().Paint2DQuadColor(gfx_context,
                                      nux::Geometry(geometry.x,
                                        geometry.y + VERTICAL_PADDING.CP(scale),
@@ -586,27 +620,6 @@ void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry c
                                style.GetVSeparatorSize().CP(scale),
                                geometry.y + content_geo.height + INNER_CORNER_RADIUS.CP(scale) + CORNER_OVERLAP.CP(scale),
                                LINE_COLOR);
-
-  // apply the darkening
-  // to preserve old behavior, don't apply darken in low_gfx
-  // instead bg_layer is need to be used in that mode
-  if (!settings.low_gfx())
-  {
-    gfx_context.GetRenderStates().SetBlend(true, GL_ZERO, GL_SRC_COLOR);
-    bg_darken_layer_->SetGeometry(larger_content_geo);
-    nux::GetPainter().RenderSinglePaintLayer(gfx_context, larger_content_geo, bg_darken_layer_.get());
-    gfx_context.GetRenderStates().SetBlend(alpha, src, dest);
-  }
-
-  // draw background color
-  if (settings.low_gfx() || settings.is_standalone())
-  {
-    auto color = bg_layer_->GetColor();
-    // opaque color for low_gfx
-    if (settings.low_gfx())
-      color.alpha = 1.0; // no setting for standalone color transparency // XXX: should probably use opacity from launcher
-    nux::GetPainter().Paint2DQuadColor(gfx_context, larger_content_geo, color);
-  }
 
   if (!settings.low_gfx())
   {
@@ -1187,16 +1200,6 @@ void OverlayRendererImpl::Draw(nux::GraphicsEngine& gfx_context, nux::Geometry c
 
     gfx_context.PopClippingRectangle();
   }
-
-  // gfx_context.GetRenderStates().SetBlend(alpha, src, dest);
-  // FIXME: this is not good. blend function is need to be set to
-  // this very specific state otherwise rendering is bugging out when
-  // in NETBOOK layout. perhaps lend function wasn't set correctly
-  // in the beginning. also this is blend state when borders
-  // rendering is finished (in !NETBOOK layout)
-  gfx_context.GetRenderStates().SetPremultipliedBlend(nux::SRC_OVER);
-  gfx_context.GetRenderStates().SetColorMask(true, true, true, true);
-  gfx_context.GetRenderStates().SetBlend(false);
 }
 
 /* XXX: huh?
