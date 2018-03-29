@@ -50,6 +50,7 @@
 #include "FavoriteStoreGSettings.h"
 #include "LauncherController.h"
 #include "Launcher.h"
+#include "QuicklistManager.h"
 
 namespace
 {
@@ -679,6 +680,10 @@ private:
         {
           if (!dash_controller->IsVisible())
           {
+            auto current_quicklist = unity::QuicklistManager::Default()->Current();
+            if (current_quicklist) // hide quicklist (if any)
+              unity::QuicklistManager::Default()->HideQuicklist(current_quicklist);
+
             launcher_controller->KeyNavTerminate(false); // ungrab (if any)
             if (dash_controller->ShowDash())
               ubus_manager.SendMessage(UBUS_PLACE_ENTRY_ACTIVATE_REQUEST,
@@ -706,7 +711,17 @@ private:
       }
       else if (keysym == XK_Escape)
       {
-        if (launcher_controller->KeyNavIsActive())
+        // here's the problem: when quicklist is open, it terminates keynav,
+        // launcher is not grabbed too. so additional check has to be made
+        // if quick list is up
+        // XXX: normally it should close itself i think, but apparently key events
+        // need to be passed to it for this logic to work or something
+
+        auto current_quicklist = unity::QuicklistManager::Default()->Current();
+        if (current_quicklist)
+          unity::QuicklistManager::Default()->HideQuicklist(current_quicklist);
+
+        if (launcher_controller->IsLauncherGrabbed())
         {
           launcher_controller->KeyNavTerminate(false);
           launcher_controller->HandleLauncherKeyRelease(false, when); // required to reset launcher highlighting
