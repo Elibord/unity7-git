@@ -38,7 +38,6 @@
 #include "MockLauncherIcon.h"
 #include "unity-shared/BackgroundEffectHelper.h"
 #include "unity-shared/UnitySettings.h"
-#include "unity-shared/XWindowManager.h"
 
 using namespace unity::switcher;
 using namespace unity::ui;
@@ -48,14 +47,6 @@ using unity::launcher::MockLauncherIcon;
 static bool enable_flipping = false;
 
 static Controller::Ptr controller;
-
-namespace unity 
-{
-WindowManagerPtr create_window_manager()
-{
-  return WindowManagerPtr(new XWindowManager());
-}
-}
 
 static gboolean on_timeout(gpointer data)
 {
