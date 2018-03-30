@@ -181,6 +181,18 @@ public:
       super))); // arg1, arg2, arg3
 
     hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      launcher, "", " + F2",
+      _("Run a command."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      launcher, "", " + 1 to 9",
+      _("Same as clicking on a Launcher icon."),
+      unity::shortcut::OptionType::HARDCODED,
+      super)));
+
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
       launcher, "", " + F1",
       _("Opens Launcher keyboard navigation mode."),
       unity::shortcut::OptionType::HARDCODED,
@@ -189,12 +201,6 @@ public:
     hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
       launcher, "", " + Tab",
       _("Switches applications via the Launcher."),
-      unity::shortcut::OptionType::HARDCODED,
-      super)));
-
-    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
-      launcher, "", " + 1 to 9",
-      _("Same as clicking on a Launcher icon."),
       unity::shortcut::OptionType::HARDCODED,
       super)));
 
@@ -508,6 +514,7 @@ private:
       { XKeysymToKeycode(dpy, XK_0), Mod4Mask },
       { XKeysymToKeycode(dpy, XK_T), Mod4Mask }, // trash: super+t
       { XKeysymToKeycode(dpy, XK_F1), Mod4Mask }, // keynav: super+f1
+      { XKeysymToKeycode(dpy, XK_F2), Mod4Mask }, // run: super+f2
       { XKeysymToKeycode(dpy, XK_Tab), Mod4Mask }, // tab switch: super+tab
       { XKeysymToKeycode(dpy, XK_A), Mod4Mask }, // dash: applications.scope
       { XKeysymToKeycode(dpy, XK_F), Mod4Mask }, // dash: files.scope
@@ -552,7 +559,6 @@ private:
   bool HandleEvent(const XEvent &event)
   {
     // reference: unityshell.cpp:UnityScreen::handleEvent()
-
     Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
 
     if (event.type != KeyPress && event.type != KeyRelease
@@ -621,9 +627,16 @@ private:
           launcher_controller->HandleLauncherKeyEvent(XModifiersToNux(event.xkey.state), keysym, event.xkey.time);
           return true;
         }
-        else if (keysym == XK_F1)
+        else if (keysym == XK_F1) // keynav
         {
           launcher_controller->KeyNavGrab();
+          return true;
+        }
+        else if (keysym == XK_F2) // run
+        {
+          const auto args = g_variant_new("(sus)", "commands.scope", unity::dash::GOTO_DASH_URI, "");
+          ubus_manager.SendMessage(UBUS_DASH_ABOUT_TO_SHOW, args);
+          ubus_manager.SendMessage(UBUS_PLACE_ENTRY_ACTIVATE_REQUEST, args);
           return true;
         }
         else if (keysym == XK_Tab)
@@ -653,8 +666,9 @@ private:
           if (it != shortcuts.end())
           {
             const auto &scope = it->second;
-            ubus_manager.SendMessage(UBUS_PLACE_ENTRY_ACTIVATE_REQUEST,
-                                     g_variant_new("(sus)", scope.c_str(), unity::dash::GOTO_DASH_URI, ""));
+            const auto args = g_variant_new("(sus)", scope.c_str(), unity::dash::GOTO_DASH_URI, "");
+            ubus_manager.SendMessage(UBUS_DASH_ABOUT_TO_SHOW, args);
+            ubus_manager.SendMessage(UBUS_PLACE_ENTRY_ACTIVATE_REQUEST, args);
             return true;
           }
         }
@@ -973,7 +987,7 @@ int main(int argc, char **argv)
       print_help();
       exit(1);
     default:
-      abort();
+      exit(1);
     }
   }
 
