@@ -101,8 +101,9 @@ set (LAUNCHER_LIBS
 #
 # Standalone variant
 #
-add_executable (launcher StandaloneLauncher.cpp)
-target_link_libraries (launcher ${LAUNCHER_LIBS} dash-lib shortcuts-lib)
+add_executable (chromatic StandaloneLauncher.cpp)
+target_link_libraries (chromatic ${LAUNCHER_LIBS} dash-lib shortcuts-lib)
+install(TARGETS chromatic DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if (ENABLE_X_SUPPORT)
   add_executable (switcher StandaloneSwitcher.cpp)
