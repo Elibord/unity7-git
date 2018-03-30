@@ -165,8 +165,15 @@ public:
     std::list<unity::shortcut::AbstractHint::Ptr> hints;
 
     const std::string super = _("Super");
-    const std::string launcher(_("Launcher"));
 
+    const std::string killswitch(_("Kill switch"));
+    hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
+      killswitch, "", _(" + Shift + K"), // category, prefix, postfix
+      std::string(_("Abort")) + " " + window_title + ".", // description
+      unity::shortcut::OptionType::HARDCODED, // "template"
+      super))); // arg1, arg2, arg3
+
+    const std::string launcher(_("Launcher"));
     hints.push_back(std::shared_ptr<unity::shortcut::AbstractHint>(new unity::shortcut::MockHint(
       launcher, "", _(" (Hold)"), // category, prefix, postfix
       _("Opens the Launcher, displays shortcuts."), // description
@@ -508,6 +515,7 @@ private:
       { XKeysymToKeycode(dpy, XK_M), Mod4Mask }, // dash: music.scope
       { XKeysymToKeycode(dpy, XK_C), Mod4Mask }, // dash: photo.scope
       { XKeysymToKeycode(dpy, XK_Escape), AnyModifier }, // cancel tab switch: super+esc, cancel keynav: esc
+      { XKeysymToKeycode(dpy, XK_K), Mod4Mask | ShiftMask }, // killswitch: super+shift+k
     };
     superkeys.assign(codes.begin(), codes.end());
 
@@ -603,8 +611,7 @@ private:
         const KeySym keysym = XkbKeycodeToKeysym(event.xany.display, event.xkey.keycode, 0, 0);
 
         // this is only launcher keys + trash
-        if ((keysym >= XK_0 && keysym <= XK_9)
-        || keysym == XK_t || keysym == XK_T)
+        if ((keysym >= XK_0 && keysym <= XK_9) || keysym == XK_t)
         {
           launcher_controller->HandleLauncherKeyEvent(XModifiersToNux(event.xkey.state), keysym, event.xkey.time);
           return true;
@@ -626,23 +633,14 @@ private:
           }
           return true;
         }
-        else if (keysym == XK_A || keysym == XK_a
-        || keysym == XK_F || keysym == XK_f
-        || keysym == XK_V || keysym == XK_v
-        || keysym == XK_M || keysym == XK_m
-        || keysym == XK_C || keysym == XK_c)
+        else if (keysym == XK_a || keysym == XK_f || keysym == XK_v || keysym == XK_m || keysym == XK_c)
         {
           const std::map<KeySym, std::string> shortcuts =
           {
-            { XK_A, "applications.scope" },
             { XK_a, "applications.scope" },
-            { XK_F, "files.scope" },
             { XK_f, "files.scope" },
-            { XK_V, "video.scope" },
             { XK_v, "video.scope" },
-            { XK_M, "music.scope" },
             { XK_m, "music.scope" },
-            { XK_C, "photos.scope" },
             { XK_c, "photos.scope" },
           };
 
@@ -661,6 +659,10 @@ private:
             launcher_controller->KeyNavTerminate(false);
 
           return true;
+        }
+        else if (keysym == XK_k)
+        {
+          abort();
         }
       }
     } // KeyPress
