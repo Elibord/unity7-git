@@ -571,6 +571,10 @@ private:
       if (event.xproperty.atom == atom::_XROOTPMAP_ID)
         SetupBackground();
     }
+    /*
+    // this reveals the hidden launcher on mouseover,
+    // but it's getting the way when buttons on the left side of the window
+    // launcher can still be revealed by pressing (or holding) super, so there you go
     else if (event.type == MotionNotify)
     {
       const auto x = event.xmotion.x_root, y = event.xmotion.y_root;
@@ -589,6 +593,7 @@ private:
 
       return false;
     }
+    */
     else if (event.type == KeyPress)
     {
       if (event.xkey.keycode == code_super_l || event.xkey.keycode == code_super_r)
