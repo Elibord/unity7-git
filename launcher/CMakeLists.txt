@@ -107,5 +107,5 @@ install(TARGETS chromatic DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if (ENABLE_X_SUPPORT)
   add_executable (switcher StandaloneSwitcher.cpp)
-  target_link_libraries (switcher switcher-lib ${LAUNCHER_LIBS})
+  target_link_libraries (switcher switcher-lib ${LAUNCHER_LIBS} unity-shared-standalone)
 endif ()
