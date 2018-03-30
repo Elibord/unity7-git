@@ -488,15 +488,14 @@ void View::DrawContent(nux::GraphicsEngine& gfx_context, bool force_draw)
   renderer_geo.height += renderer_y_offset;
 
   // clear before drawing
-  nux::ROPConfig ROP;
-  ROP.Blend = !Settings::Instance().is_standalone();
-  ROP.SrcBlend = GL_ONE;
-  ROP.DstBlend = GL_ONE_MINUS_SRC_ALPHA;
-  nux::GetPainter().PushDrawColorLayer(gfx_context, renderer_geo, nux::color::Transparent, true, ROP);
-  nux::GetPainter().PaintActivePaintLayerStack(gfx_context, renderer_geo);
+  nux::GetPainter().Paint2DQuadColor(gfx_context, renderer_geo, nux::color::Transparent);
 
   // renderer_.DrawInner(gfx_context, draw_content_geo, GetAbsoluteGeometry(), GetGeometry());
   renderer_.DrawFull(gfx_context, draw_content_geo, renderer_geo_abs, renderer_geo, false);
+
+  gfx_context.GetRenderStates().SetPremultipliedBlend(nux::SRC_OVER);
+  gfx_context.GetRenderStates().SetColorMask(true, true, true, true);
+  gfx_context.GetRenderStates().SetBlend(false);
 
   /*
   gfx_context.PushClippingRectangle(draw_content_geo);
