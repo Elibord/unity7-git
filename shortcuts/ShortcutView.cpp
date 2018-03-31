@@ -215,6 +215,7 @@ void View::DrawOverlay(nux::GraphicsEngine& GfxContext, bool force_draw, nux::Ge
 
   // FIXME: just a workaround. this isn't quite right, there are glitches at corners
   // reference to proper overlay renderer: OverlayRenderer.cpp
+  // also UnityWindowView.cpp for bg problems
   if (settings.low_gfx() || settings.is_standalone())
   {
     auto color = background_color(); // View's background color, set by controller

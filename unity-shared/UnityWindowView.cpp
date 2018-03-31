@@ -322,7 +322,11 @@ void UnityWindowView::Draw(nux::GraphicsEngine& GfxContext, bool force_draw)
   rop.Blend = true;
 
 #ifndef NUX_OPENGLES_20
-  if (GfxContext.UsingGLSLCodePath() == false)
+  // FIXME: this "works" on intel gma, but not in virtualbox
+  // on intel gma it creates an effect when window bg and text bg are of the different shades
+  // so disable in standalone mode. bg in standalone mode will be drawn elsewhere (shortcuts),
+  // although this is the place where bg issue is need to be fixed in standalone mode
+  if (GfxContext.UsingGLSLCodePath() == false && !Settings::Instance().is_standalone())
   {
     rop.SrcBlend = GL_ONE;
     rop.DstBlend = GL_ONE_MINUS_SRC_ALPHA;
