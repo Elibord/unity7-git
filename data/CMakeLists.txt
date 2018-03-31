@@ -4,6 +4,7 @@ add_subdirectory(pam)
 SET (UNITY_SCHEMAS "com.canonical.Unity.gschema.xml")
 SET (UNITY_TEST_SCHEMAS "external.gschema.xml")
 SET (COMPIZ_SCHEMA "org.compiz.gschema.xml")
+SET (UBUNTU_UI_SCHEMA "com.ubuntu.user-interface.gschema.xml")
 
 # Have an option to not install the schema into where GLib is
 option (GSETTINGS_LOCALINSTALL "Install GSettings Schemas locally instead of to the GLib prefix" OFF)
@@ -26,6 +27,7 @@ endif (_schemas_invalid)
 message (STATUS "GSettings schemas will be installed into ${GSETTINGS_DIR}")
 install (FILES ${UNITY_SCHEMAS} DESTINATION ${GSETTINGS_DIR} OPTIONAL)
 install (FILES ${COMPIZ_SCHEMA} DESTINATION ${GSETTINGS_DIR} OPTIONAL)
+install (FILES ${UBUNTU_UI_SCHEMA} DESTINATION ${GSETTINGS_DIR} OPTIONAL)
 install (CODE "message (STATUS \"Compiling GSettings schemas\")")
 install (CODE "execute_process (COMMAND ${_glib_comple_schemas} ${GSETTINGS_DIR})")
 
