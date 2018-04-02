@@ -972,7 +972,7 @@ static void print_help()
 {
   std::cout
     << "  --help, -h      this help screen" << std::endl
-    << "  --opacity, -o   laucher/dash opacity" << std::endl
+    << "  --opacity, -o   laucher/dash opacity. 0.0 - transparent, 1.0 - opaque" << std::endl
     << "  --lowgfx        enable low gfx mode" << std::endl
     << "  --bottom        position launcher at bottom" << std::endl
     << "  --netbook       netbook form-factor (dash)" << std::endl
