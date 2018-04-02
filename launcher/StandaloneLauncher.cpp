@@ -653,9 +653,6 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
   && event.type != PropertyNotify)
     return false;
 
-  const int when = std::chrono::duration_cast<std::chrono::milliseconds>(
-    std::chrono::system_clock::now().time_since_epoch()).count();
-
   static const auto code_super_l = XKeysymToKeycode(dpy, XK_Super_L);
   static const auto code_super_r = XKeysymToKeycode(dpy, XK_Super_R);
 
@@ -689,6 +686,8 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
   */
   else if (event.type == KeyPress)
   {
+    const int when = event.xbutton.time; // reference: compiz/src/event.c
+
     if (event.xkey.keycode == code_super_l || event.xkey.keycode == code_super_r)
     {
       GrabSuperkeys();
@@ -706,6 +705,10 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
     // and dock don't get keyboard focus too
     else if (!dash_controller->IsVisible())
     {
+      // FIXME: to reset key press time, hacky
+      launcher_controller->HandleLauncherKeyPress(0);
+      launcher_controller->HandleLauncherKeyRelease(false, 0);
+
       const KeySym keysym = XkbKeycodeToKeysym(event.xany.display, event.xkey.keycode, 0, 0);
 
       // this is only launcher keys + trash
@@ -774,6 +777,7 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
   } // KeyPress
   else if (event.type == KeyRelease)
   {
+    const int when = event.xbutton.time; // reference: compiz/src/event.c
     const KeySym keysym = XkbKeycodeToKeysym(event.xany.display, event.xkey.keycode, 0, 0);
 
     if (event.xkey.keycode == code_super_l || event.xkey.keycode == code_super_r)
