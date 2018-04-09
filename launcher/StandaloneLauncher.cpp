@@ -33,6 +33,7 @@
 #include <NuxCore/AnimationController.h>
 #include <NuxCore/Logger.h>
 
+#include "unity-shared/BamfApplicationManager.h"
 #include "unity-shared/BGHash.h"
 #include "unity-shared/DashStyle.h"
 #include "unity-shared/FontSettings.h"
@@ -43,6 +44,7 @@
 #include "unity-shared/UnitySettings.h"
 #include "unity-shared/UScreen.h"
 #include "unity-shared/XWindowManager.h"
+#include "UnityCore/DesktopUtilities.h"
 #include "dash/DashController.h"
 #include "shortcuts/BaseWindowRaiserImp.h"
 #include "shortcuts/ShortcutController.h"
@@ -77,14 +79,6 @@ struct options_t
 } options;
 } // namespace
 
-namespace unity
-{
-WindowManagerPtr create_window_manager() // private create_window_manager()
-{
-  return WindowManagerPtr(new XWindowManager());
-}
-} // namespace unity
-
 namespace // forward declarations
 {
 nux::Color ComputeAverageWallpaperColor(Display *dpy);
@@ -96,6 +90,18 @@ unsigned XModifiersToNux(unsigned input);
 struct StandaloneDndManager : unity::XdndManager // dunno, implements abstract class i guess
 {
   int Monitor() const { return 0; }
+};
+
+class ChromaticApplicationManager : public unity::bamf::Manager
+{
+public:
+  unity::ApplicationPtr GetUnityApplication() const override
+  {
+    // XXX: chromatic.desktop has to be installed
+    // if GetUnityApplication() fails to provide a valid pointer
+    // ApplicationLauncherIcon::LogUnityEvent() crashes
+    return GetApplicationForDesktopFile(unity::DesktopUtilities::GetDesktopPathById("chromatic.desktop"));
+  }
 };
 
 class ShortcutsModeller : public unity::shortcut::AbstractModeller // model for shortcuts view
@@ -1033,3 +1039,17 @@ int main(int argc, char **argv)
 
   return 0;
 }
+
+// these symbols are used in static WindowManager::Default() and ApplicationManager::Default()
+namespace unity
+{
+WindowManagerPtr create_window_manager() // private create_window_manager()
+{
+  return WindowManagerPtr(new XWindowManager());
+}
+
+std::shared_ptr<ApplicationManager> create_application_manager() // private create_application_manager()
+{
+  return std::shared_ptr<ApplicationManager>(new ChromaticApplicationManager());
+}
+} // namespace unity
