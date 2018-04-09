@@ -249,7 +249,7 @@ set(UNITY_PLUGIN_SHARED_DEPS
     libstartup-notification-1.0
     nux-4.0>=4.0.5
     sigc++-2.0>=2.4.0
-    unity-misc>=0.4.0
+    # unity-misc>=0.4.0
     zeitgeist-2.0
 )
 
