@@ -244,7 +244,7 @@ set(UNITY_PLUGIN_SHARED_DEPS
     indicator3-0.4>=0.4.90
     json-glib-1.0
     libbamf3>=0.5.3
-    gnome-desktop-3.0
+    # gnome-desktop-3.0
     libnotify
     libstartup-notification-1.0
     nux-4.0>=4.0.5
@@ -272,7 +272,7 @@ pkg_check_modules (CACHED_UNITY_PRIVATE_DEPS REQUIRED ${UNITY_PROTOCOL_PRIVATE_D
 find_library (UNITY_PROTOCOL_PRIVATE_LIB unity-protocol-private ${CACHED_UNITY_PRIVATE_DEPS_LIBDIR} ${CACHED_UNITY_PRIVATE_DEPS_LIBRARY_DIRS})
 set(UNITY_STANDALONE_LADD ${UNITY_STANDALONE_LADD} ${UNITY_PROTOCOL_PRIVATE_LIB})
 
-#add_subdirectory(a11y)
+# add_subdirectory(a11y)
 add_subdirectory(unity-shared)
 add_subdirectory(dash)
 add_subdirectory(launcher)
@@ -294,12 +294,12 @@ if (ENABLE_X_SUPPORT)
   endif (ENABLE_NETWORKAREAREGION_PLUGIN)
 endif ()
 
-#add_subdirectory(doc)
+# add_subdirectory(doc)
 # add_subdirectory(services)
-#add_subdirectory(tools)
+# add_subdirectory(tools)
 add_subdirectory(UnityCore)
-#add_subdirectory(guides)
-#add_subdirectory(gnome)
+# add_subdirectory(guides)
+# add_subdirectory(gnome)
 
 if (ENABLE_UNIT_TESTS)
   add_subdirectory(tests)
