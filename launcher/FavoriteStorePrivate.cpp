@@ -18,7 +18,7 @@
 */
 
 #include <algorithm>
-#include <boost/utility.hpp>
+#include <boost/next_prior.hpp>
 
 #include "FavoriteStorePrivate.h"
 
