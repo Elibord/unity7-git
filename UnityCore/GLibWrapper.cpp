@@ -17,6 +17,8 @@
 * Authored by: Tim Penhey <tim.penhey@canonical.com>
 */
 
+#include <iostream>
+
 #include "GLibWrapper.h"
 
 namespace unity
@@ -213,4 +215,3 @@ bool operator!=(Object<GCancellable> const& lhs, Cancellable const& rhs)
 
 }
 }
-
