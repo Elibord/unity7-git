@@ -94,6 +94,7 @@ set (SWITCHER_SOURCES
 # add_dependencies (switcher-lib unity-core-${UNITY_API_VERSION} unity-shared)
 
 set (LAUNCHER_LIBS
+    Xext
     launcher-lib
     unity-shared
     unity-shared-bamf)
