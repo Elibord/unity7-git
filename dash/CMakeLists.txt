@@ -52,8 +52,8 @@ target_link_libraries (dash-lib previews-lib)
 add_pch(pch/dash_pch.hh dash-lib)
 
 
-# 
+#
 # Standalone variant
 #
-add_executable (dash StandaloneDash.cpp)
-target_link_libraries (dash dash-lib unity-shared unity-shared-standalone)
+# add_executable (dash StandaloneDash.cpp)
+# target_link_libraries (dash dash-lib unity-shared unity-shared-standalone)
