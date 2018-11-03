@@ -90,8 +90,8 @@ set (SWITCHER_SOURCES
       SwitcherView.cpp
     )
 
-add_library (switcher-lib STATIC ${SWITCHER_SOURCES})
-add_dependencies (switcher-lib unity-core-${UNITY_API_VERSION} unity-shared)
+# add_library (switcher-lib STATIC ${SWITCHER_SOURCES})
+# add_dependencies (switcher-lib unity-core-${UNITY_API_VERSION} unity-shared)
 
 set (LAUNCHER_LIBS
     launcher-lib
@@ -106,6 +106,6 @@ target_link_libraries (chromatic-launcher ${LAUNCHER_LIBS} dash-lib shortcuts-li
 install(TARGETS chromatic-launcher DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 if (ENABLE_X_SUPPORT)
-  add_executable (switcher StandaloneSwitcher.cpp)
-  target_link_libraries (switcher switcher-lib ${LAUNCHER_LIBS} unity-shared-standalone)
+  # add_executable (switcher StandaloneSwitcher.cpp)
+  # target_link_libraries (switcher switcher-lib ${LAUNCHER_LIBS} unity-shared-standalone)
 endif ()

@@ -45,5 +45,5 @@ add_pch(pch/shortcuts_pch.hh shortcuts-lib)
 #
 # Standalone variant
 #
-add_executable (shortcuts StandaloneShortcuts.cpp)
-target_link_libraries (shortcuts shortcuts-lib unity-shared unity-shared-standalone)
+# add_executable (shortcuts StandaloneShortcuts.cpp)
+# target_link_libraries (shortcuts shortcuts-lib unity-shared unity-shared-standalone)
