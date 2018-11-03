@@ -27,6 +27,12 @@ option(
 )
 
 option(
+  ENABLE_COMPIZ
+  "Enable compiz"
+  ON
+)
+
+option(
   ENABLE_UNIT_TESTS
   "Enable Unity Unit Tests"
   ON
@@ -258,13 +264,20 @@ set(UNITY_PLUGIN_DEPS ${UNITY_PLUGIN_SHARED_DEPS})
 if(ENABLE_X_SUPPORT)
   set(UNITY_PLUGIN_DEPS
       ${UNITY_PLUGIN_DEPS}
-      compiz>=0.9.11
       libgeis
       x11
       xfixes
       xi>=1.6.99.1
       xrender>=0.9
   )
+
+  if(ENABLE_COMPIZ)
+    set(UNITY_PLUGIN_DEPS
+        ${UNITY_PLUGIN_DEPS}
+        compiz>=0.9.11
+    )
+    add_definitions(-DENABLE_COMPIZ)
+  endif () # ENABLE_COMPIZ
 endif ()
 
 pkg_check_modules (CACHED_UNITY_DEPS REQUIRED ${UNITY_PLUGIN_DEPS})

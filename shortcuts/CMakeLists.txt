@@ -24,7 +24,6 @@ set (SHORTCUTS_SOURCES
      MockShortcutHint.h
      ShortcutController.cpp
      ShortcutController.h
-     ShortcutHint.cpp
      ShortcutHintPrivate.cpp
      ShortcutModel.cpp
      ShortcutModel.h
@@ -32,11 +31,18 @@ set (SHORTCUTS_SOURCES
      ShortcutView.h
      )
 
+if (ENABLE_COMPIZ)
+    set (SHORTCUTS_SOURCES
+        ${SHORTCUTS_SOURCES}
+        ShortcutHint.cpp
+    )
+endif ()
+
 add_library (shortcuts-lib STATIC ${SHORTCUTS_SOURCES})
 add_dependencies (shortcuts-lib unity-core-${UNITY_API_VERSION} unity-shared)
 add_pch(pch/shortcuts_pch.hh shortcuts-lib)
 
-# 
+#
 # Standalone variant
 #
 add_executable (shortcuts StandaloneShortcuts.cpp)

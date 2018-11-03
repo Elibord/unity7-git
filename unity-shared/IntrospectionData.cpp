@@ -18,7 +18,9 @@
  */
 
 #include "IntrospectionData.h"
-#include <core/rect.h>
+#ifdef ENABLE_COMPIZ
+# include <core/rect.h>
+#endif
 #include <NuxCore/Rect.h>
 #include <NuxCore/Color.h>
 #include <NuxCore/Math/Point3D.h>
@@ -198,6 +200,7 @@ IntrospectionData& IntrospectionData::add(std::string const& name, nux::Color co
   return *this;
 }
 
+#ifdef ENABLE_COMPIZ
 IntrospectionData& IntrospectionData::add(std::string const& name, CompPoint const& p)
 {
   return add(name, nux::Point(p.x(), p.y()));
@@ -212,6 +215,7 @@ IntrospectionData& IntrospectionData::add(std::string const& name, CompSize cons
 {
   return add(name, nux::Size(s.width(), s.height()));
 }
+#endif // ENABLE_COMPIZ
 
 IntrospectionData& IntrospectionData::add(nux::Rect const& value)
 {
@@ -224,10 +228,12 @@ IntrospectionData& IntrospectionData::add(nux::Rect const& value)
   return *this;
 }
 
+#ifdef ENABLE_COMPIZ
 IntrospectionData& IntrospectionData::add(CompRect const& r)
 {
   return add(nux::Rect(r.x(), r.y(), r.width(), r.height()));
 }
+#endif // ENABLE_COMPIZ
 
 } // debug namespace
 } // unity namespace
