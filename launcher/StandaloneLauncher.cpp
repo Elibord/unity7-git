@@ -57,17 +57,27 @@
 
 namespace
 {
+
 static const std::string window_title = "Chromatic";
 static const std::string wm_class = "chromatic";
 
 namespace atom
 {
+
 Atom _XROOTPMAP_ID = 0;
 Atom _NET_WORKAREA = 0;
 Atom _NET_WM_STRUT_PARTIAL = 0;
 Atom _NET_WM_WINDOW_TYPE = 0;
 Atom _NET_WM_WINDOW_TYPE_DOCK = 0;
+Atom _NET_WM_STATE = 0;
+Atom _NET_WM_STATE_STICKY = 0;
+Atom _NET_WM_STATE_SKIP_TASKBAR = 0;
+Atom _NET_WM_STATE_SKIP_PAGER = 0;
+Atom _NET_WM_DESKTOP = 0;
+Atom _NET_WM_NAME = 0;
 Atom _MOTIF_WM_HINTS = 0;
+Atom UTF8_STRING = 0;
+
 } // namespace atom
 
 struct options_t
@@ -77,14 +87,16 @@ struct options_t
   int netbook = 0;
   float alpha = 0.6667;
 } options;
+
 } // namespace
 
 namespace // forward declarations
 {
+
 nux::Color ComputeAverageWallpaperColor(Display *dpy);
-nux::Rect ScreenGeom();
-nux::Rect WorkareaGeom();
-unsigned XModifiersToNux(unsigned input);
+nux::Rect ScreenGeom(); // TODO: static
+nux::Rect WorkareaGeom(); // TODO: static
+
 } // namespace
 
 struct StandaloneDndManager : unity::XdndManager // dunno, implements abstract class i guess
@@ -230,6 +242,8 @@ unity::shortcut::Model::Ptr ShortcutsModeller::CreateModel()
   return std::make_shared<unity::shortcut::Model>(hints);
 }
 
+// DECLARE_LOGGER(logger, "chromatic.launcher");
+
 class LauncherWindow // main window
 {
 public:
@@ -255,6 +269,7 @@ private:
   void SetupUBusInterests();
   void SetupShortcuts();
   void SetupScreens();
+  void SetupShape();
   void GrabSuper();
   void GrabSuperkeys();
   void UngrabSuperkeys();
@@ -289,7 +304,14 @@ void LauncherWindow::Init()
   atom::_NET_WM_STRUT_PARTIAL = XInternAtom(dpy, "_NET_WM_STRUT_PARTIAL", False);
   atom::_NET_WM_WINDOW_TYPE = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE", False);
   atom::_NET_WM_WINDOW_TYPE_DOCK = XInternAtom(dpy, "_NET_WM_WINDOW_TYPE_DOCK", False);
+  atom::_NET_WM_STATE = XInternAtom(dpy, "_NET_WM_STATE", False);
+  atom::_NET_WM_STATE_STICKY = XInternAtom(dpy, "_NET_WM_STATE_STICKY", False);
+  atom::_NET_WM_STATE_SKIP_TASKBAR = XInternAtom(dpy, "_NET_WM_STATE_SKIP_TASKBAR", False);
+  atom::_NET_WM_STATE_SKIP_PAGER = XInternAtom(dpy, "_NET_WM_STATE_SKIP_PAGER", False);
+  atom::_NET_WM_DESKTOP = XInternAtom(dpy, "_NET_WM_DESKTOP", False);
+  atom::_NET_WM_NAME = XInternAtom(dpy, "_NET_WM_NAME", False);
   atom::_MOTIF_WM_HINTS = XInternAtom(dpy, "_MOTIF_WM_HINTS", False);
+  atom::UTF8_STRING = XInternAtom(dpy, "UTF8_STRING", False);
 
   SetupSettings(); // settings need to be setup first because it will trigger some signals and slot in other parts
   SetupBackground(); // window background + launcher/dash background
@@ -313,6 +335,7 @@ void LauncherWindow::Init()
   SetupUBusInterests();
   SetupWindow();
   SetupScreens();
+  SetupShape();
   SetupShortcuts();
 }
 
@@ -331,12 +354,14 @@ void LauncherWindow::SetupPanel()
   const auto screen_geom = ScreenGeom();
 
   // XXX: well, this will only work if there is one panel across all monitors
-  // or panels oof the same height on each monitor, so this is only a workaround sadly
+  // or panels of the same height on each monitor, so this is only a workaround sadly
   const auto panel_height = workarea_geom.GetPosition().y - screen_geom.GetPosition().y;
 
   auto &panel_style = unity::panel::Style::Instance();
   for (size_t i = 0; i < unity::UScreen::GetDefault()->GetMonitors().size(); ++i)
+  {
     panel_style.SetPanelHeight(panel_height, i);
+  }
 }
 
 void LauncherWindow::SetupBackground()
@@ -363,12 +388,31 @@ void LauncherWindow::SetupWindow()
 {
   Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
   Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
+  Window root_window = DefaultRootWindow(dpy);
 
   // set type to dock
-  auto atom = atom::_NET_WM_WINDOW_TYPE_DOCK;
+  // XXX: this doesn't always work
+  // _NET_WM_WINDOW_TYPE_DOCK has to be set before window maps
+  // although Nux maps window to bind GLX context
+  // reference: GraphicsDisplay::CreateOpenGLWindow()
+  // one option is to create window with something else
+  // e.g. glfw, then use that window to init Nux
+  // alternatively Nux could make a callback before mapping
+  auto dock = atom::_NET_WM_WINDOW_TYPE_DOCK;
   XChangeProperty(dpy, window_id, atom::_NET_WM_WINDOW_TYPE,
                   XA_ATOM, 32, PropModeReplace,
-                  (unsigned char *)&atom, 1);
+                  (unsigned char *)&dock, 1);
+
+  // set desktop (all desktops)
+  long desktop = 0xFFFFFFFF;
+  XChangeProperty(dpy, window_id, atom::_NET_WM_DESKTOP,
+                  XA_CARDINAL, 32, PropModeReplace,
+                  (unsigned char *)&desktop, 1);
+
+  // set name
+  XChangeProperty(dpy, window_id, atom::_NET_WM_NAME,
+                  atom::UTF8_STRING, 8, PropModeReplace,
+                  (unsigned char *)window_title.c_str(), window_title.length());
 
   // undecorate (for xfce)
   const std::vector<long> hints_values =
@@ -380,7 +424,7 @@ void LauncherWindow::SetupWindow()
     0x0, // status
   };
   XChangeProperty(dpy, window_id, atom::_MOTIF_WM_HINTS,
-                  XA_CARDINAL, 32, PropModeReplace,
+                  atom::_MOTIF_WM_HINTS, 32, PropModeReplace,
                   (unsigned char *)&hints_values[0], hints_values.size());
 
   // set class hint (WM_CLASS)
@@ -389,7 +433,34 @@ void LauncherWindow::SetupWindow()
   class_hint.res_class = (char *)window_title.c_str();
   XSetClassHint(dpy, window_id, &class_hint);
 
-  XFlush(dpy);
+  // set state
+  const std::vector<Atom> state_atoms =
+  {
+    atom::_NET_WM_STATE_STICKY,
+    atom::_NET_WM_STATE_SKIP_TASKBAR,
+    atom::_NET_WM_STATE_SKIP_PAGER,
+  };
+
+  for (const auto atom : state_atoms)
+  {
+    XEvent xev;
+    xev.xclient.type = ClientMessage;
+    xev.xclient.serial = 0;
+    xev.xclient.send_event = True;
+    xev.xclient.display = dpy;
+    xev.xclient.window = window_id;
+    xev.xclient.message_type = atom::_NET_WM_STATE;
+    xev.xclient.format = 32;
+    xev.xclient.data.l[0] = 1; // _NET_WM_STATE_ADD;
+    xev.xclient.data.l[1] = atom;
+    xev.xclient.data.l[2] = 0;
+    xev.xclient.data.l[3] = 1; // CLIENT_TYPE_APPLICATION;
+    xev.xclient.data.l[4] = 0;
+
+    XSendEvent(dpy, root_window, False, SubstructureRedirectMask | SubstructureNotifyMask, &xev);
+  };
+
+  // XFlush(dpy);
 }
 
 void LauncherWindow::SetupUBusInterests()
@@ -397,25 +468,16 @@ void LauncherWindow::SetupUBusInterests()
   ubus_manager.RegisterInterest(UBUS_OVERLAY_SHOWN, [this] (GVariant *) {
     Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
     Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
-
-    // set input shape to whole screen
-    const auto geom = ScreenGeom();
-    XRectangle input_rectangle = {};
-    input_rectangle.x = geom.GetPosition().x;
-    input_rectangle.y = geom.GetPosition().y;
-    input_rectangle.width = geom.GetWidth();
-    input_rectangle.height = geom.GetHeight();
-    XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0,
-      &input_rectangle, 1, ShapeSet, 0);
-
     XGrabKeyboard(dpy, window_id, True, GrabModeAsync, GrabModeAsync, CurrentTime);
+
+    SetupShape();
   });
 
   ubus_manager.RegisterInterest(UBUS_OVERLAY_HIDDEN, [this] (GVariant *) {
-    SetupScreens(); // FIXME: it's overkill to SetupScreens() here
-
     Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
     XUngrabKeyboard(dpy, CurrentTime);
+
+    SetupShape();
   });
 }
 
@@ -464,7 +526,9 @@ void LauncherWindow::SetupScreens()
   // first get rid of old slots if any
   const auto &launchers = launcher_controller->launchers();
   for (auto &slot : launcher_slots)
+  {
     slot.disconnect();
+  }
 
   // connect all launchers so they trigger SetupScreen() on change
   // this shouldn't happen often: on resolution change and display on/off i think
@@ -527,7 +591,7 @@ void LauncherWindow::SetupScreens()
 
     const auto launcher_geom = launcher->GetParent()->GetGeometry();
 
-    std::vector<long> dock_values;
+    std::vector<long> dock_values; // _NET_WM_STRUT_PARTIAL
     if (unity::Settings::Instance().launcher_position == unity::LauncherPosition::LEFT)
     {
       dock_values.assign({
@@ -550,39 +614,63 @@ void LauncherWindow::SetupScreens()
         launcher_geom.GetPosition().x, launcher_geom.GetPosition().x + launcher_geom.GetWidth(), // bottom start x, bottom end x
       });
     }
-    XChangeProperty(dpy, window_id, atom::_NET_WM_STRUT_PARTIAL,
-                    XA_CARDINAL, 32, (i == 0 ? PropModeReplace : PropModeAppend),
-                    (unsigned char *)&dock_values[0], dock_values.size());
+
+    if (i == left_most || i == bottom_most)
+    {
+      XChangeProperty(dpy, window_id, atom::_NET_WM_STRUT_PARTIAL,
+                      XA_CARDINAL, 32, (i == 0 ? PropModeReplace : PropModeAppend),
+                      (unsigned char *)&dock_values[0], dock_values.size());
+    }
   }
+}
 
-  // restore input to whole screen
-  XRectangle screen_rectangle = {};
-  screen_rectangle.x = screen_geom.GetPosition().x;
-  screen_rectangle.y = screen_geom.GetPosition().y;
-  screen_rectangle.width = screen_geom.GetWidth();
-  screen_rectangle.height = screen_geom.GetHeight();
-  XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0,
-    &screen_rectangle, 1, ShapeSet, 0);
-
-  // reconfigure input on launchers
-  std::vector<XRectangle> input_rectangles(launchers.size());
-  for (const auto &launcher : launchers)
+void LauncherWindow::SetupShape()
+{
+  const auto XRectangleToNux = [] (const nux::Rect &rect)
   {
-    const auto &launcher_geom = launcher->GetParent()->GetGeometry();
+    XRectangle xshape_rect = {};
+    xshape_rect.x = rect.GetPosition().x;
+    xshape_rect.y = rect.GetPosition().y;
+    xshape_rect.width = rect.GetWidth();
+    xshape_rect.height = rect.GetHeight();
 
-    XRectangle input_rectangle = {};
-    input_rectangle.x = launcher_geom.GetPosition().x;
-    input_rectangle.y = launcher_geom.GetPosition().y;
-    input_rectangle.width = launcher_geom.GetWidth();
-    input_rectangle.height = launcher_geom.GetHeight();
+    return xshape_rect;
+  };
 
-    input_rectangles.push_back(input_rectangle);
+  const auto screen_geom = ScreenGeom();
+
+  auto *dpy = nux::GetGraphicsDisplay()->GetX11Display();
+  Window window_id = nux::GetGraphicsDisplay()->GetWindowHandle();
+
+  const auto &launchers = launcher_controller->launchers();
+  // reserve for launchers + quicklist|tooltip + dash
+  std::vector<XRectangle> input_rectangles(launchers.size() * 2 + 1);
+
+  const bool fullscreen = dash_controller->IsVisible();
+  if (fullscreen)
+  {
+    input_rectangles.push_back(XRectangleToNux(screen_geom));
+  }
+  else
+  {
+    // launchers shape
+    for (const auto &launcher : launchers)
+    {
+      const auto &launcher_geom = launcher->GetParent()->GetGeometry();
+      input_rectangles.push_back(XRectangleToNux(launcher_geom));
+    }
   }
 
-  XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0,
-    &input_rectangles[0], input_rectangles.size(), ShapeSet, 0);
-
-  XFlush(dpy);
+  if (!input_rectangles.empty())
+  {
+    // XXX: it's possible to use ShapeBounding here and this works, but
+    // sadly a very nasty flicker occurs. it looks like when shape
+    // is shrunk to launcher/quicklists area, then expanded back
+    // to fullscreen, old framebuffer(?) content appears for one frame,
+    // then frame is cleared, then new frame is displayed
+    XShapeCombineRectangles(dpy, window_id, ShapeInput, 0, 0,
+      &input_rectangles[0], input_rectangles.size(), ShapeSet, Unsorted);
+  }
 }
 
 void LauncherWindow::GrabSuper()
@@ -651,6 +739,26 @@ void LauncherWindow::UngrabSuperkeys()
 
 bool LauncherWindow::HandleEvent(const XEvent &event)
 {
+  const auto XModifiersToNux = [] (unsigned input)
+  {
+    // reference: unityshell.cpp:UnityScreen::XModifiersToNux
+    unsigned modifiers = 0;
+
+    if (input & Mod1Mask)
+      modifiers |= nux::KEY_MODIFIER_ALT;
+
+    if (input & ShiftMask)
+      modifiers |= nux::KEY_MODIFIER_SHIFT;
+
+    if (input & ControlMask)
+      modifiers |= nux::KEY_MODIFIER_CTRL;
+
+    if (input & Mod4Mask)
+      modifiers |= nux::KEY_MODIFIER_SUPER;
+
+    return modifiers;
+  };
+
   // reference: unityshell.cpp:UnityScreen::handleEvent()
   Display *dpy = nux::GetGraphicsDisplay()->GetX11Display();
 
@@ -662,14 +770,14 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
   static const auto code_super_l = XKeysymToKeycode(dpy, XK_Super_L);
   static const auto code_super_r = XKeysymToKeycode(dpy, XK_Super_R);
 
-  if (event.type == PropertyNotify)
+  if (event.type == PropertyNotify
+  && event.xproperty.atom == atom::_XROOTPMAP_ID)
   {
-    if (event.xproperty.atom == atom::_XROOTPMAP_ID)
-      SetupBackground();
+    SetupBackground();
   }
   /*
   // this reveals the hidden launcher on mouseover,
-  // but it's getting the way when buttons on the left side of the window
+  // but it's getting in the way when buttons on the left side of the window
   // launcher can still be revealed by pressing (or holding) super, so there you go
   else if (event.type == MotionNotify)
   {
@@ -711,7 +819,7 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
     // and dock don't get keyboard focus too
     else if (!dash_controller->IsVisible())
     {
-      // FIXME: to reset key press time, hacky
+      // FIXME: to reset keypress time, hacky
       launcher_controller->HandleLauncherKeyPress(0);
       launcher_controller->HandleLauncherKeyRelease(false, 0);
 
@@ -771,7 +879,9 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
       else if (keysym == XK_Escape)
       {
         if (launcher_controller->KeyNavIsActive())
+        {
           launcher_controller->KeyNavTerminate(false);
+        }
 
         return true;
       }
@@ -823,7 +933,9 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
 
         const bool grabbed = launcher_controller->IsLauncherGrabbed(); // launcher is grabbed when keynav is activated
         if (!grabbed)
+        {
           launcher_controller->KeyNavTerminate(!grabbed);
+        }
 
         return true;
       }
@@ -835,10 +947,11 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
       // if quick list is up
       // XXX: normally it should close itself i think, but apparently key events
       // need to be passed to it for this logic to work or something
-
       auto current_quicklist = unity::QuicklistManager::Default()->Current();
       if (current_quicklist)
+      {
         unity::QuicklistManager::Default()->HideQuicklist(current_quicklist);
+      }
 
       if (launcher_controller->IsLauncherGrabbed())
       {
@@ -847,7 +960,6 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
         return true;
       }
     }
-
   } // KeyRelease
 
   return false;
@@ -855,6 +967,7 @@ bool LauncherWindow::HandleEvent(const XEvent &event)
 
 namespace
 {
+
 nux::Color ComputeAverageWallpaperColor(Display *dpy)
 {
   nux::Color average_color;
@@ -881,15 +994,19 @@ nux::Color ComputeAverageWallpaperColor(Display *dpy)
   }
 
   if (root_pixmap == None)
+  {
     return average_color;
+  }
 
   XImage *img = XGetImage(dpy, root_pixmap, 0, 0, attrs.width, attrs.height, ~0, ZPixmap);
   // XFreePixmap(dpy, root_pixmap);
 
   if (img == nullptr || img->depth < 24)
+  {
     return average_color;
+  }
 
-  auto add_avg = [] (float prev_avg, float value, unsigned long samples)
+  const auto add_avg = [] (float prev_avg, float value, unsigned long samples)
   {
     return (prev_avg * samples + value) / (samples + 1);
   };
@@ -953,25 +1070,6 @@ nux::Rect WorkareaGeom() // screen-space
   return nux::Rect(x, y, width, height);
 }
 
-unsigned XModifiersToNux(unsigned input)
-{
-  // reference: unityshell.cpp:UnityScreen::XModifiersToNux
-  unsigned modifiers = 0;
-
-  if (input & Mod1Mask)
-    modifiers |= nux::KEY_MODIFIER_ALT;
-
-  if (input & ShiftMask)
-    modifiers |= nux::KEY_MODIFIER_SHIFT;
-
-  if (input & ControlMask)
-    modifiers |= nux::KEY_MODIFIER_CTRL;
-
-  if (input & Mod4Mask)
-    modifiers |= nux::KEY_MODIFIER_SUPER;
-
-  return modifiers;
-}
 } // namespace
 
 static void print_help()
@@ -1033,7 +1131,7 @@ int main(int argc, char **argv)
   nux::logging::configure_logging(::getenv("UNITY_LOG_SEVERITY"));
 
   std::shared_ptr<nux::WindowThread> wt(
-    nux::CreateGUIThread(window_title.c_str(), 0, 0, 0,
+    nux::CreateGUIThread(window_title.c_str(), 0, 0, nullptr,
     &LauncherWindow::ThreadWidgetInit));
   wt->Run(nullptr);
 
@@ -1043,6 +1141,7 @@ int main(int argc, char **argv)
 // these symbols are used in static WindowManager::Default() and ApplicationManager::Default()
 namespace unity
 {
+
 WindowManagerPtr create_window_manager() // private create_window_manager()
 {
   return WindowManagerPtr(new XWindowManager());
@@ -1052,4 +1151,5 @@ std::shared_ptr<ApplicationManager> create_application_manager() // private crea
 {
   return std::shared_ptr<ApplicationManager>(new ChromaticApplicationManager());
 }
+
 } // namespace unity
