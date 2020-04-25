@@ -1,3 +1,133 @@
+unity (7.5.0+20.04.20200312-0ubuntu1) focal; urgency=medium
+
+  [ Khurshid Alam ]
+  * Bump dependency of unity-settings-daemon & unity-settings-daemon-
+    schemas
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Thu, 12 Mar 2020 10:58:27 +0000
+
+unity (7.5.0+20.04.20200211-0ubuntu2) focal; urgency=medium
+
+  [ Khurshid Alam ]
+  * Drop libgnome-desktop for background drawing.
+    Use libunity-settings-daemon instead. LP: #1863584
+
+ -- Sebastien Bacher <seb128@ubuntu.com>  Thu, 27 Feb 2020 21:28:09 +0100
+
+unity (7.5.0+20.04.20200211-0ubuntu1) focal; urgency=medium
+
+  [ Rik Mills ]
+  * unity-autopilot: Remove python3-windowmocker dependency. Permits
+    removal of window-mocker source, as part of Qt4 removal.
+
+ -- Dmitry Shachnev <mitya57@ubuntu.com>  Tue, 11 Feb 2020 14:07:56 +0000
+
+unity (7.5.0+19.10.20190924-0ubuntu1) eoan; urgency=medium
+
+  [ Khurshid Alam ]
+  * Port media keys to use com.canonical.unity.settings-daemon. LP:
+    #1842324 (LP: #1842324)
+
+  [ Tasos Sahanidis ]
+  * Fix gcc 7.2 build errors
+
+ -- Marco Trevisan (Treviño) <mail@3v1n0.net>  Tue, 24 Sep 2019 09:46:52 +0000
+
+unity (7.5.0+19.04.20190827-0ubuntu1) eoan; urgency=medium
+
+  * Disable Werror. It doesn't make sense to fail on compiler warnings for the
+    distro.
+  * Rebuild against libgnome-desktop-3-18
+
+ -- Iain Lane <iain@orangesquash.org.uk>  Tue, 27 Aug 2019 11:10:00 +0100
+
+unity (7.5.0+19.04.20190304-0ubuntu1) disco; urgency=medium
+
+  [ disco/unity: Failed to merge https://git.launchpad.net/unity. ]
+  * Add missing includes for build w/o pch
+
+ -- Marco Trevisan (Treviño) <mail@3v1n0.net>  Mon, 04 Mar 2019 17:07:16 +0000
+
+unity (7.5.0+19.04.20190217-0ubuntu1) disco; urgency=medium
+
+  [ Andrea Azzarone ]
+  * locksreen: cancel authentication if externally unlocked (LP:
+    #1733557)
+
+ -- Dmitry Shachnev <mitya57@ubuntu.com>  Sun, 17 Feb 2019 19:14:19 +0000
+
+unity (7.5.0+19.04.20190208-0ubuntu1) disco; urgency=medium
+
+  [ Alberts Muktupāvels ]
+  * Install compiz configuration files.
+
+  [ Khurshid Alam ]
+  * Recommend nemo for unity. (LP: #1814506)
+
+ -- Dmitry Shachnev <mitya57@ubuntu.com>  Fri, 08 Feb 2019 11:46:59 +0000
+
+unity (7.5.0+19.04.20190103-0ubuntu1) disco; urgency=medium
+
+  [ Marco Trevisan (Treviño) ]
+  * debian/gbp.conf: add default settings to use gbp-buildpackage
+  * debian: use native source format
+
+  [ Alberts Muktupāvels ]
+  * Port to Python 3. (LP: #1310794)
+
+  [ Dmitry Shachnev ]
+  * Use std::get instead of std::tr1::get for std::tuple.
+  * Build-depend on yaru-theme-icon to fix the test failure.
+
+  [ Aleksey Tulinov ]
+  * Add missing includes for build w/o pch
+
+ -- Dmitry Shachnev <mitya57@ubuntu.com>  Thu, 03 Jan 2019 18:07:42 +0000
+
+unity (7.5.0+18.10.20180926.2-0ubuntu1) cosmic; urgency=medium
+
+  [ Alexander Hale ]
+  * Update the Free Software Foundation address in license headers
+
+  [ Marco Trevisan (Treviño) ]
+  * Favorite migrations: add nautilus-home and nautilus-folder-handler
+
+ -- Marco Trevisan (Treviño) <mail@3v1n0.net>  Wed, 26 Sep 2018 10:29:04 +0000
+
+unity (7.5.0+18.10.20180827-0ubuntu1) cosmic; urgency=medium
+
+  [ Alberts Muktupāvels ]
+  * Fix build.
+
+ -- Dmitry Shachnev <mitya57@ubuntu.com>  Mon, 27 Aug 2018 12:50:33 +0000
+
+unity (7.5.0+18.04.20180413-0ubuntu1) bionic; urgency=medium
+
+  * unity_migrate_gnome_favorites: add evolution and gnome-tweaks
+
+ -- Marco Trevisan (Treviño) <mail@3v1n0.net>  Fri, 13 Apr 2018 21:33:45 +0000
+
+unity (7.5.0+18.04.20180409-0ubuntu1) bionic; urgency=medium
+
+  * unity.migrations: add migration script to rename GNOME desktop files
+
+ -- Marco Trevisan (Treviño) <mail@3v1n0.net>  Mon, 09 Apr 2018 20:23:54 +0000
+
+unity (7.5.0+18.04.20180404-0ubuntu2) bionic; urgency=medium
+
+  * Add "X-Ubuntu-Use-Langpack: yes" to debian/control now that this package is
+    in Universe (LP: #1760435).
+
+ -- Simon Quigley <tsimonq2@ubuntu.com>  Sat, 07 Apr 2018 11:37:31 -0500
+
+unity (7.5.0+18.04.20180321-0ubuntu1) bionic; urgency=medium
+
+  [ Andrea Azzarone ]
+  * Fix memory leak in UserAuthenticatorPam::AuthenticateStart and add
+    some debug messages.
+
+ -- Marco Trevisan (Treviño) <mail@3v1n0.net>  Wed, 21 Mar 2018 14:56:58 +0000
+
 unity (7.5.0+18.04.20180221.1-0ubuntu1) bionic; urgency=medium
 
   * Unity use track_obj to safely connect to UScreen and Settings

@@ -215,7 +215,7 @@ if (BOOT_LOGGER)
     SET (BOOT_LOGGER_FLAG "-DENABLE_LOGGER")
 endif (BOOT_LOGGER)
 
-SET (MAINTAINER_CXXFLAGS "-Werror -Wall -Wcast-align -Wempty-body -Wformat-security -Winit-self -Warray-bounds -Wno-error=deprecated-declarations")
+SET (MAINTAINER_CXXFLAGS "-Wall -Wcast-align -Wempty-body -Wformat-security -Winit-self -Warray-bounds -Wno-error=deprecated-declarations")
 
 option (DISABLE_ERROR_ON_LOCAL_TYPEDEFS_WARNINGS "Disable errors when local typedefs are unused" ON)
 if (DISABLE_ERROR_ON_LOCAL_TYPEDEFS_WARNINGS)
@@ -251,6 +251,7 @@ set(UNITY_PLUGIN_SHARED_DEPS
     json-glib-1.0
     libbamf3>=0.5.3
     # gnome-desktop-3.0
+    # libunity-settings-daemon
     libnotify
     libstartup-notification-1.0
     nux-4.0>=4.0.5
