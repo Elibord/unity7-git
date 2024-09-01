@@ -1,21 +1,13 @@
-                                    Unity                                      
---------------------------------------------------------------------------------
-
-• Installation
-
-  Please see INSTALL or http://wiki.ubuntu.com/Unity/InstallationGuideFromSource
-
-• Tests
-
-  - You can run `make check` in the build directory to run all GTester tests
-  - In the build directory, ./tests/test-panel will start the panel in
-    standalone mode, which is great for testing
-
-
-• Environmental Variables
-
-  PANEL_USE_LOCAL_SERVICE=${anything}
-    Makes the panel run the unity-panel-service directly instead of through
-    D-Bus activation. This is used for testing how the panel reacts when it
-    starts before the service does.
-
+This repo for cloning for xbps-src.
+Here is: 
+- Unity Desktop Environment 7.5.0
+-- with patches:
+--- using Ayatana libraries
+--- removing social scope
+--- fixing building under new versions of libraries, under standard c++11
+--- fix systemd dir (for building on Void, or etc.)
+--- remove niceties from CMakeLists.txt
+--- remove Ubuntu-specific settings
+--- update cmake require (minimum required from 2.8.9 to 3.17.0)
+--- stdout.h, vector fixes
+--- some fixes from upstream Unity 7.5-7.7 (like g_clear_pointer error and etc.)
